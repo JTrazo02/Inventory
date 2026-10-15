@@ -303,7 +303,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function getTableName(category) {
     if (category === "Stock In / Received") return "stock_in";
     if (category === "Stock Out / Released") return "stock_out";
-    return "inventory_items"; // Shared table for all specific category/group pages
+    return "inventory_items";
   }
 
   function mapItemToRow(category, item) {
@@ -335,7 +335,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function mapRowToItem(row) {
     return {
-      id: row.id,
+      supabaseId: row.id,
       date: row.date_received || row.date_released || row.date_in_out || "—",
       device: row.device_type || "—",
       name: row.name || "—",
@@ -356,21 +356,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadDatabaseFromSupabase() {
     try {
-      // 1. Fetch Stock In
       const { data: stockInData } = await _supabase.from("stock_in").select("*");
       if (stockInData) {
         db["Stock In / Received"] = stockInData.map(mapRowToItem);
       }
 
-      // 2. Fetch Stock Out
       const { data: stockOutData } = await _supabase.from("stock_out").select("*");
       if (stockOutData) {
         db["Stock Out / Released"] = stockOutData.map(mapRowToItem);
       }
 
-      // 3. Fetch Category Items
       const { data: itemsData } = await _supabase.from("inventory_items").select("*");
       if (itemsData) {
+        // Reset category arrays before populating
+        devicesList.forEach((cat) => { db[cat] = []; });
+        Object.keys(categoryGroupMap).forEach((group) => { db[group] = []; });
+
         itemsData.forEach((row) => {
           const cat = row.category_group;
           const mappedItem = mapRowToItem(row);
@@ -389,7 +390,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     devicesList.forEach((cat) => { if (!db[cat]) db[cat] = []; });
     Object.keys(categoryGroupMap).forEach((group) => { if (!db[group]) db[group] = []; });
 
-    buildTableGrid("Summary");
+    buildTableGrid(activeCategory);
   }
 
   async function saveRecordToTable(category, item) {
@@ -397,19 +398,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     const rowPayload = mapItemToRow(category, item);
 
     if (item.supabaseId) {
-      rowPayload.id = item.supabaseId;
-    }
+      const { error } = await _supabase
+        .from(tableName)
+        .update(rowPayload)
+        .eq("id", item.supabaseId);
 
-    const { data, error } = await _supabase
-      .from(tableName)
-      .upsert(rowPayload, { onConflict: "serial_number" })
-      .select();
+      if (error) console.error(`Error updating record in ${tableName}:`, error);
+    } else {
+      const { data, error } = await _supabase
+        .from(tableName)
+        .insert([rowPayload])
+        .select();
 
-    if (error) {
-      console.error(`Error saving to table ${tableName}:`, error);
-    } else if (data && data[0] && data[0].id) {
-      item.supabaseId = data[0].id;
+      if (error) {
+        console.error(`Error inserting record into ${tableName}:`, error);
+      } else if (data && data[0] && data[0].id) {
+        item.supabaseId = data[0].id;
+      }
     }
+    
     localStorage.setItem("plaspack_inventory_db", JSON.stringify(db));
   }
 
@@ -432,10 +439,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         "postgres_changes",
         { event: "*", schema: "public" },
         () => {
-          // Reload database dynamically when changes happen from another device
-          loadDatabaseFromSupabase().then(() => {
-            buildTableGrid(activeCategory);
-          });
+          loadDatabaseFromSupabase();
         }
       )
       .subscribe();
@@ -1262,6 +1266,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (targetIndex !== "") {
       const existingRecord = db[activeCategory][targetIndex] || {};
       const formattedRow = {
+        supabaseId: existingRecord.supabaseId,
         date: formattedShortDate,
         device: inputDeviceType,
         name: document.getElementById("assetName").value.trim() || "—",
