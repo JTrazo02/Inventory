@@ -1,4 +1,6 @@
-// --- SUPABASE CLIENT INITIALIZATION ---
+// ==========================================
+// SUPABASE CLIENT INITIALIZATION
+// ==========================================
 const SUPABASE_URL = "https://ajyhxlvqjkgovcrfsnig.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_wa_eoq6Z21iTyijZgWALkg_6DXwPCWw";
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -307,55 +309,55 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function mapItemToRow(category, item) {
-  let base = {};
+    let base = {};
 
-  if (category === "Stock In / Received") {
-    base = {
-      date_received: item.date && item.date !== "—" ? item.date : null,
-      device_type: item.device && item.device !== "—" ? item.device : null,
-      name: item.name && item.name !== "—" ? item.name : null,
-      model: item.model && item.model !== "—" ? item.model : null,
-      serial_number: item.serial && item.serial !== "—" ? item.serial : null,
-      price: item.price && item.price !== "—" ? item.price : null,
-    };
-  } else if (category === "Stock Out / Released") {
-    base = {
-      date_released: item.date && item.date !== "—" ? item.date : null,
-      device_type: item.device && item.device !== "—" ? item.device : null,
-      name: item.name && item.name !== "—" ? item.name : null,
-      model: item.model && item.model !== "—" ? item.model : null,
-      serial_number: item.serial && item.serial !== "—" ? item.serial : null,
-      deployed_to: item.deployed !== "" ? item.deployed : null,
-      status: item.status || "Extra",
-      oth: item.oth !== "" ? item.oth : null,
-      erf: item.erf !== "" ? item.erf : null,
-    };
-  } else {
-    base = {
-      category_group: category,
-      date_in_out: item.date && item.date !== "—" ? item.date : null,
-      device_type: item.device && item.device !== "—" ? item.device : null,
-      name: item.name && item.name !== "—" ? item.name : null,
-      model: item.model && item.model !== "—" ? item.model : null,
-      serial_number: item.serial && item.serial !== "—" ? item.serial : null,
-      deployed_to: item.deployed !== "" ? item.deployed : null,
-      status: item.status || "Extra",
-      oth: item.oth !== "" ? item.oth : null,
-      erf: item.erf !== "" ? item.erf : null,
-      remarks: item.remarks !== "" ? item.remarks : null,
-      mac_address: item.macAddress !== "" ? item.macAddress : null,
-      phone_number: item.phoneNumber !== "" ? item.phoneNumber : null,
-      phone_imei1: item.phoneImei1 !== "" ? item.phoneImei1 : null,
-      sap_fa_asset: item.sapFaAsset !== "" ? item.sapFaAsset : null,
-    };
+    if (category === "Stock In / Received") {
+      base = {
+        date_received: item.date && item.date !== "—" ? item.date : null,
+        device_type: item.device && item.device !== "—" ? item.device : null,
+        name: item.name && item.name !== "—" ? item.name : null,
+        model: item.model && item.model !== "—" ? item.model : null,
+        serial_number: item.serial && item.serial !== "—" ? item.serial : null,
+        price: item.price && item.price !== "—" ? item.price : null,
+      };
+    } else if (category === "Stock Out / Released") {
+      base = {
+        date_released: item.date && item.date !== "—" ? item.date : null,
+        device_type: item.device && item.device !== "—" ? item.device : null,
+        name: item.name && item.name !== "—" ? item.name : null,
+        model: item.model && item.model !== "—" ? item.model : null,
+        serial_number: item.serial && item.serial !== "—" ? item.serial : null,
+        deployed_to: item.deployed !== "" ? item.deployed : null,
+        status: item.status || "Extra",
+        oth: item.oth !== "" ? item.oth : null,
+        erf: item.erf !== "" ? item.erf : null,
+      };
+    } else {
+      base = {
+        category_group: category,
+        date_received: item.date && item.date !== "—" ? item.date : null,
+        device_type: item.device && item.device !== "—" ? item.device : null,
+        name: item.name && item.name !== "—" ? item.name : null,
+        model: item.model && item.model !== "—" ? item.model : null,
+        serial_number: item.serial && item.serial !== "—" ? item.serial : null,
+        deployed_to: item.deployed !== "" ? item.deployed : null,
+        status: item.status || "Extra",
+        oth: item.oth !== "" ? item.oth : null,
+        erf: item.erf !== "" ? item.erf : null,
+        remarks: item.remarks !== "" ? item.remarks : null,
+        mac_address: item.macAddress !== "" ? item.macAddress : null,
+        phone_number: item.phoneNumber !== "" ? item.phoneNumber : null,
+        phone_imei1: item.phoneImei1 !== "" ? item.phoneImei1 : null,
+        sap_fa_asset: item.sapFaAsset !== "" ? item.sapFaAsset : null,
+      };
+    }
+
+    if (item.supabaseId) {
+      base.id = item.supabaseId;
+    }
+
+    return base;
   }
-
-  if (item.supabaseId) {
-    base.id = item.supabaseId;
-  }
-
-  return base;
-}
 
   function mapRowToItem(row) {
     return {
@@ -808,19 +810,77 @@ document.addEventListener("DOMContentLoaded", async () => {
           rowHTML += `<td>${recVal > 0 ? recVal : "-"}</td><td class="${relClass}">${relVal > 0 ? relVal : "-"}</td>`;
         }
 
-        const remStock = totalYearRec - totalYearRel;
-        rowHTML += `<td>${totalYearRec > 0 ? totalYearRec : "-"}</td>`;
-        rowHTML += `<td>${totalYearRel > 0 ? totalYearRel : "-"}</td>`;
-        rowHTML += `<td class="border-right-year">${remStock !== 0 ? remStock : "-"}</td>`;
-        rowHTML += `<td class="border-right-2025">-</td>`;
-        rowHTML += `<td>${totalYearRec > 0 ? totalYearRec : "-"}</td>`;
-        rowHTML += `<td>${totalYearRel > 0 ? totalYearRel : "-"}</td>`;
-        rowHTML += `<td class="border-right-today">${remStock !== 0 ? remStock : "-"}</td>`;
+        const yearRemaining = totalYearRec - totalYearRel;
+        rowHTML += `<td>${totalYearRec > 0 ? totalYearRec : "-"}</td><td>${totalYearRel > 0 ? totalYearRel : "-"}</td><td class="border-right-year">${yearRemaining !== 0 ? yearRemaining : "-"}</td>`;
+
+        let prevStockCount = 0;
+        const targetYearInt = parseInt(currentSelectedYear, 10);
+        
+        if (db["Stock In / Received"]) {
+          db["Stock In / Received"].forEach((item) => {
+            if (item && item.device && item.device.trim().toLowerCase() === deviceName.toLowerCase() && item.date) {
+              const parts = item.date.split("/");
+              if (parts.length === 3) {
+                const itemYear = parseInt("20" + parts[2], 10);
+                if (itemYear < targetYearInt) prevStockCount++;
+              }
+            }
+          });
+        }
+
+        if (db["Stock Out / Released"]) {
+          db["Stock Out / Released"].forEach((item) => {
+            if (item && item.device && item.device.trim().toLowerCase() === deviceName.toLowerCase() && item.date) {
+              const parts = item.date.split("/");
+              if (parts.length === 3) {
+                const itemYear = parseInt("20" + parts[2], 10);
+                if (itemYear < targetYearInt) prevStockCount--;
+              }
+            }
+          });
+        }
+
+        rowHTML += `<td class="border-right-2025">${prevStockCount !== 0 ? prevStockCount : "-"}</td>`;
+
+        let todayRec = 0;
+        let todayRel = 0;
+
+        if (db["Stock In / Received"]) {
+          db["Stock In / Received"].forEach((item) => {
+            if (item && item.device && item.device.trim().toLowerCase() === deviceName.toLowerCase() && item.date) {
+              const parts = item.date.split("/");
+              if (parts.length === 3) {
+                const itemDateObj = new Date(`20${parts[2]}`, parseInt(parts[0], 10) - 1, parseInt(parts[1], 10));
+                if (itemDateObj.toDateString() === todayObj.toDateString()) todayRec++;
+              }
+            }
+          });
+        }
+
+        if (db["Stock Out / Released"]) {
+          db["Stock Out / Released"].forEach((item) => {
+            if (item && item.device && item.device.trim().toLowerCase() === deviceName.toLowerCase() && item.date) {
+              const parts = item.date.split("/");
+              if (parts.length === 3) {
+                const itemDateObj = new Date(`20${parts[2]}`, parseInt(parts[0], 10) - 1, parseInt(parts[1], 10));
+                if (itemDateObj.toDateString() === todayObj.toDateString()) todayRel++;
+              }
+            }
+          });
+        }
+
+        const todayRem = prevStockCount + totalYearRec - totalYearRel + todayRec - todayRel;
+        rowHTML += `<td>${todayRec > 0 ? todayRec : "-"}</td><td>${todayRel > 0 ? todayRel : "-"}</td><td class="border-right-today">${todayRem !== 0 ? todayRem : "-"}</td>`;
 
         tr.innerHTML = rowHTML;
         tbody.appendChild(tr);
       });
+
       table.appendChild(tbody);
+      container.appendChild(table);
+      nodes.contentView.appendChild(container);
+      nodes.dynamicTitle.textContent = "Summary";
+      return;
     } else {
       nodes.globalActions.classList.remove("hide-modifiers");
       if (nodes.triggerRecoverBtn) nodes.triggerRecoverBtn.style.display = "none";
@@ -1351,16 +1411,12 @@ document.addEventListener("DOMContentLoaded", async () => {
               matchedItem.remarks = formattedRow.remarks;
               if (rawPriceInput) matchedItem.price = formattedPrice;
               await saveRecordToTable(targetCat, matchedItem);
-            } else {
-              const newCatItem = { ...formattedRow, device: inputDeviceType, status: chosenStatus };
-              db[targetCat].push(newCatItem);
-              await saveRecordToTable(targetCat, newCatItem);
             }
           }
-        } else {
-          if (!db[activeCategory]) db[activeCategory] = [];
-          db[activeCategory].push(formattedRow);
-          await saveRecordToTable(activeCategory, formattedRow);
+        } else if (activeCategory === "Stock In / Received") {
+          if (!db["Stock In / Received"]) db["Stock In / Received"] = [];
+          db["Stock In / Received"].push(formattedRow);
+          await saveRecordToTable("Stock In / Received", formattedRow);
 
           const targetCat = resolveTargetCategory(inputDeviceType);
           if (targetCat) {
@@ -1369,6 +1425,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             db[targetCat].push(categoryCopyRow);
             await saveRecordToTable(targetCat, categoryCopyRow);
           }
+        } else {
+          if (!db[activeCategory]) db[activeCategory] = [];
+          db[activeCategory].push(formattedRow);
+          await saveRecordToTable(activeCategory, formattedRow);
         }
       }
     }
