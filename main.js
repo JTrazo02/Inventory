@@ -308,23 +308,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function mapItemToRow(category, item) {
     const base = {
-      date_received: item.date || null,
-      date_released: item.date || null,
-      date_in_out: item.date || null,
-      device_type: item.device || null,
-      name: item.name || null,
-      model: item.model || null,
-      serial_number: item.serial || null,
-      price: item.price || null,
-      deployed_to: item.deployed || null,
-      status: item.status || null,
-      oth: item.oth || null,
-      erf: item.erf || null,
-      remarks: item.remarks || null,
-      mac_address: item.macAddress || null,
-      phone_number: item.phoneNumber || null,
-      phone_imei1: item.phoneImei1 || null,
-      sap_fa_asset: item.sapFaAsset || null,
+      date_received: item.date && item.date !== "—" ? item.date.split(" | ")[0] : null,
+      date_released: item.date && item.date !== "—" ? item.date : null,
+      date_in_out: item.date && item.date !== "—" ? item.date : null,
+      device_type: item.device !== "—" ? item.device : null,
+      name: item.name !== "—" ? item.name : null,
+      model: item.model !== "—" ? item.model : null,
+      serial_number: item.serial !== "—" ? item.serial : null,
+      price: item.price !== "—" ? item.price : null,
+      deployed_to: item.deployed !== "" ? item.deployed : null,
+      status: item.status || "Extra",
+      oth: item.oth !== "" ? item.oth : null,
+      erf: item.erf !== "" ? item.erf : null,
+      remarks: item.remarks !== "" ? item.remarks : null,
+      mac_address: item.macAddress !== "" ? item.macAddress : null,
+      phone_number: item.phoneNumber !== "" ? item.phoneNumber : null,
+      phone_imei1: item.phoneImei1 !== "" ? item.phoneImei1 : null,
+      sap_fa_asset: item.sapFaAsset !== "" ? item.sapFaAsset : null,
     };
 
     if (category !== "Stock In / Received" && category !== "Stock Out / Released") {
@@ -368,7 +368,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const { data: itemsData } = await _supabase.from("inventory_items").select("*");
       if (itemsData) {
-        // Reset category arrays before populating
         devicesList.forEach((cat) => { db[cat] = []; });
         Object.keys(categoryGroupMap).forEach((group) => { db[group] = []; });
 
