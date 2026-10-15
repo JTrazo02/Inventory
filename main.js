@@ -1,4 +1,9 @@
-document.addEventListener("DOMContentLoaded", () => {
+// --- SUPABASE CLIENT INITIALIZATION ---
+const SUPABASE_URL = "https://ajyhxlvqjkgovcrfsnig.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_wa_eoq6Z21iTyijZgWALkg_6DXwPCWw";
+const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+document.addEventListener("DOMContentLoaded", async () => {
   const nodes = {
     sidebar: document.getElementById("sidebar"),
     sidebarToggle: document.getElementById("sidebarToggle"),
@@ -288,13 +293,63 @@ document.addEventListener("DOMContentLoaded", () => {
     return exactMatch || cleanName;
   }
 
-  let db = JSON.parse(localStorage.getItem("plaspack_inventory_db"));
-  if (!db) {
-    db = { Summary: [], "Stock In / Received": [], "Stock Out / Released": [] };
-  }
-  
+  let db = { Summary: [], "Stock In / Received": [], "Stock Out / Released": [] };
   devicesList.forEach((cat) => { if (!db[cat]) db[cat] = []; });
   Object.keys(categoryGroupMap).forEach((group) => { if (!db[group]) db[group] = []; });
+
+  // --- SUPABASE STORAGE SYNC ---
+  async function saveDatabase() {
+    localStorage.setItem("plaspack_inventory_db", JSON.stringify(db));
+    const { error } = await _supabase
+      .from("inventory_store")
+      .upsert({ id: "main_db", content: db });
+
+    if (error) {
+      console.error("Error saving database to Supabase:", error);
+    }
+  }
+
+  async function loadDatabaseFromSupabase() {
+    try {
+      const { data, error } = await _supabase
+        .from("inventory_store")
+        .select("content")
+        .eq("id", "main_db")
+        .single();
+
+      if (data && data.content) {
+        db = data.content;
+      } else {
+        const local = localStorage.getItem("plaspack_inventory_db");
+        if (local) db = JSON.parse(local);
+      }
+    } catch (err) {
+      console.warn("Could not connect to Supabase, falling back to local storage", err);
+      const local = localStorage.getItem("plaspack_inventory_db");
+      if (local) db = JSON.parse(local);
+    }
+
+    devicesList.forEach((cat) => { if (!db[cat]) db[cat] = []; });
+    Object.keys(categoryGroupMap).forEach((group) => { if (!db[group]) db[group] = []; });
+
+    buildTableGrid("Summary");
+  }
+
+  function subscribeToRealtimeSync() {
+    _supabase
+      .channel("public:inventory_store")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "inventory_store" },
+        (payload) => {
+          if (payload.new && payload.new.content) {
+            db = payload.new.content;
+            buildTableGrid(activeCategory);
+          }
+        }
+      )
+      .subscribe();
+  }
 
   function checkAndCreateDailySnapshot() {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -309,10 +364,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
   checkAndCreateDailySnapshot();
-
-  function saveDatabase() {
-    localStorage.setItem("plaspack_inventory_db", JSON.stringify(db));
-  }
 
   function convertToShortDate(dateString) {
     if (!dateString || !dateString.includes("-")) return dateString;
@@ -1247,5 +1298,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  buildTableGrid("Summary");
+  // --- INITIALIZE LOAD AND REALTIME SYNC ---
+  await loadDatabaseFromSupabase();
+  subscribeToRealtimeSync();
 });
