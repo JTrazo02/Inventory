@@ -307,15 +307,37 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function mapItemToRow(category, item) {
-    const base = {
-      date_received: item.date && item.date !== "—" ? item.date.split(" | ")[0] : null,
-      date_released: item.date && item.date !== "—" ? item.date : null,
-      date_in_out: item.date && item.date !== "—" ? item.date : null,
+  let base = {};
+
+  if (category === "Stock In / Received") {
+    base = {
+      date_received: item.date && item.date !== "—" ? item.date : null,
       device_type: item.device && item.device !== "—" ? item.device : null,
       name: item.name && item.name !== "—" ? item.name : null,
       model: item.model && item.model !== "—" ? item.model : null,
       serial_number: item.serial && item.serial !== "—" ? item.serial : null,
       price: item.price && item.price !== "—" ? item.price : null,
+    };
+  } else if (category === "Stock Out / Released") {
+    base = {
+      date_released: item.date && item.date !== "—" ? item.date : null,
+      device_type: item.device && item.device !== "—" ? item.device : null,
+      name: item.name && item.name !== "—" ? item.name : null,
+      model: item.model && item.model !== "—" ? item.model : null,
+      serial_number: item.serial && item.serial !== "—" ? item.serial : null,
+      deployed_to: item.deployed !== "" ? item.deployed : null,
+      status: item.status || "Extra",
+      oth: item.oth !== "" ? item.oth : null,
+      erf: item.erf !== "" ? item.erf : null,
+    };
+  } else {
+    base = {
+      category_group: category,
+      date_in_out: item.date && item.date !== "—" ? item.date : null,
+      device_type: item.device && item.device !== "—" ? item.device : null,
+      name: item.name && item.name !== "—" ? item.name : null,
+      model: item.model && item.model !== "—" ? item.model : null,
+      serial_number: item.serial && item.serial !== "—" ? item.serial : null,
       deployed_to: item.deployed !== "" ? item.deployed : null,
       status: item.status || "Extra",
       oth: item.oth !== "" ? item.oth : null,
@@ -326,17 +348,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       phone_imei1: item.phoneImei1 !== "" ? item.phoneImei1 : null,
       sap_fa_asset: item.sapFaAsset !== "" ? item.sapFaAsset : null,
     };
-
-    // Only include id in the payload if it is an existing database record being updated
-    if (item.supabaseId) {
-      base.id = item.supabaseId;
-    }
-
-    if (category !== "Stock In / Received" && category !== "Stock Out / Released") {
-      base.category_group = category;
-    }
-    return base;
   }
+
+  if (item.supabaseId) {
+    base.id = item.supabaseId;
+  }
+
+  return base;
+}
 
   function mapRowToItem(row) {
     return {
