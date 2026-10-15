@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     okConfirmBtn: document.getElementById("okConfirmBtn"),
   };
 
-  // --- FLOATING HOVER CARD (STYLED VIA CSS CLASSES & GRID) ---
+  // --- FLOATING HOVER CARD ---
   const cellHoverCard = document.createElement("div");
   cellHoverCard.id = "cellHoverCard";
   document.body.appendChild(cellHoverCard);
@@ -100,14 +100,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   const cellDetailsForm = document.getElementById("cellDetailsForm");
-  cellDetailsForm.addEventListener("submit", (e) => {
+  cellDetailsForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (editingCellRowIndex !== null && db["Cellphone"][editingCellRowIndex]) {
-      db["Cellphone"][editingCellRowIndex].macAddress = document.getElementById("cellMacInput").value.trim();
-      db["Cellphone"][editingCellRowIndex].phoneNumber = document.getElementById("cellPhoneInput").value.trim();
-      db["Cellphone"][editingCellRowIndex].phoneImei1 = document.getElementById("cellImeiInput").value.trim();
-      db["Cellphone"][editingCellRowIndex].sapFaAsset = document.getElementById("cellSapInput").value.trim();
-      saveDatabase();
+      const record = db["Cellphone"][editingCellRowIndex];
+      record.macAddress = document.getElementById("cellMacInput").value.trim();
+      record.phoneNumber = document.getElementById("cellPhoneInput").value.trim();
+      record.phoneImei1 = document.getElementById("cellImeiInput").value.trim();
+      record.sapFaAsset = document.getElementById("cellSapInput").value.trim();
+      
+      await saveRecordToTable("Cellphone", record);
       buildTableGrid("Cellphone");
     }
     closeCellModal();
@@ -173,7 +175,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const statusSelect = document.getElementById("assetStatus");
-    if (statusSelect) statusSelect.value = "In Service";
+    if (statusSelect) statusSelect.value = "Extra";
   };
 
   const dismissModal = () => {
@@ -297,34 +299,89 @@ document.addEventListener("DOMContentLoaded", async () => {
   devicesList.forEach((cat) => { if (!db[cat]) db[cat] = []; });
   Object.keys(categoryGroupMap).forEach((group) => { if (!db[group]) db[group] = []; });
 
-  // --- SUPABASE STORAGE SYNC ---
-  async function saveDatabase() {
-    localStorage.setItem("plaspack_inventory_db", JSON.stringify(db));
-    const { error } = await _supabase
-      .from("inventory_store")
-      .upsert({ id: "main_db", content: db });
+  // --- SUPABASE RELATIONAL MAPPING FUNCTIONS ---
+  function getTableName(category) {
+    if (category === "Stock In / Received") return "stock_in";
+    if (category === "Stock Out / Released") return "stock_out";
+    return "inventory_items"; // Shared table for all specific category/group pages
+  }
 
-    if (error) {
-      console.error("Error saving database to Supabase:", error);
+  function mapItemToRow(category, item) {
+    const base = {
+      date_received: item.date || null,
+      date_released: item.date || null,
+      date_in_out: item.date || null,
+      device_type: item.device || null,
+      name: item.name || null,
+      model: item.model || null,
+      serial_number: item.serial || null,
+      price: item.price || null,
+      deployed_to: item.deployed || null,
+      status: item.status || null,
+      oth: item.oth || null,
+      erf: item.erf || null,
+      remarks: item.remarks || null,
+      mac_address: item.macAddress || null,
+      phone_number: item.phoneNumber || null,
+      phone_imei1: item.phoneImei1 || null,
+      sap_fa_asset: item.sapFaAsset || null,
+    };
+
+    if (category !== "Stock In / Received" && category !== "Stock Out / Released") {
+      base.category_group = category;
     }
+    return base;
+  }
+
+  function mapRowToItem(row) {
+    return {
+      id: row.id,
+      date: row.date_received || row.date_released || row.date_in_out || "—",
+      device: row.device_type || "—",
+      name: row.name || "—",
+      model: row.model || "—",
+      serial: row.serial_number || "—",
+      price: row.price || "—",
+      deployed: row.deployed_to || "",
+      status: row.status || "Extra",
+      oth: row.oth || "",
+      erf: row.erf || "",
+      remarks: row.remarks || "",
+      macAddress: row.mac_address || "",
+      phoneNumber: row.phone_number || "",
+      phoneImei1: row.phone_imei1 || "",
+      sapFaAsset: row.sap_fa_asset || "",
+    };
   }
 
   async function loadDatabaseFromSupabase() {
     try {
-      const { data, error } = await _supabase
-        .from("inventory_store")
-        .select("content")
-        .eq("id", "main_db")
-        .maybeSingle();
+      // 1. Fetch Stock In
+      const { data: stockInData } = await _supabase.from("stock_in").select("*");
+      if (stockInData) {
+        db["Stock In / Received"] = stockInData.map(mapRowToItem);
+      }
 
-      if (data && data.content) {
-        db = data.content;
-      } else {
-        const local = localStorage.getItem("plaspack_inventory_db");
-        if (local) db = JSON.parse(local);
+      // 2. Fetch Stock Out
+      const { data: stockOutData } = await _supabase.from("stock_out").select("*");
+      if (stockOutData) {
+        db["Stock Out / Released"] = stockOutData.map(mapRowToItem);
+      }
+
+      // 3. Fetch Category Items
+      const { data: itemsData } = await _supabase.from("inventory_items").select("*");
+      if (itemsData) {
+        itemsData.forEach((row) => {
+          const cat = row.category_group;
+          const mappedItem = mapRowToItem(row);
+          if (cat) {
+            if (!db[cat]) db[cat] = [];
+            db[cat].push(mappedItem);
+          }
+        });
       }
     } catch (err) {
-      console.warn("Could not connect to Supabase, falling back to local storage", err);
+      console.warn("Could not connect to Supabase tables, checking local storage fallback", err);
       const local = localStorage.getItem("plaspack_inventory_db");
       if (local) db = JSON.parse(local);
     }
@@ -335,17 +392,50 @@ document.addEventListener("DOMContentLoaded", async () => {
     buildTableGrid("Summary");
   }
 
+  async function saveRecordToTable(category, item) {
+    const tableName = getTableName(category);
+    const rowPayload = mapItemToRow(category, item);
+
+    if (item.supabaseId) {
+      rowPayload.id = item.supabaseId;
+    }
+
+    const { data, error } = await _supabase
+      .from(tableName)
+      .upsert(rowPayload, { onConflict: "serial_number" })
+      .select();
+
+    if (error) {
+      console.error(`Error saving to table ${tableName}:`, error);
+    } else if (data && data[0] && data[0].id) {
+      item.supabaseId = data[0].id;
+    }
+    localStorage.setItem("plaspack_inventory_db", JSON.stringify(db));
+  }
+
+  async function deleteRecordFromTable(category, serialNumber) {
+    const tableName = getTableName(category);
+    if (!serialNumber || serialNumber === "—") return;
+
+    const query = _supabase.from(tableName).delete();
+    if (tableName === "inventory_items") {
+      await query.eq("serial_number", serialNumber).eq("category_group", category);
+    } else {
+      await query.eq("serial_number", serialNumber);
+    }
+  }
+
   function subscribeToRealtimeSync() {
     _supabase
-      .channel("public:inventory_store")
+      .channel("public:all_inventory")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "inventory_store" },
-        (payload) => {
-          if (payload.new && payload.new.content) {
-            db = payload.new.content;
+        { event: "*", schema: "public" },
+        () => {
+          // Reload database dynamically when changes happen from another device
+          loadDatabaseFromSupabase().then(() => {
             buildTableGrid(activeCategory);
-          }
+          });
         }
       )
       .subscribe();
@@ -787,27 +877,14 @@ document.addEventListener("DOMContentLoaded", async () => {
                 select.appendChild(option);
               });
 
-              select.addEventListener("change", (e) => {
+              select.addEventListener("change", async (e) => {
                 e.stopPropagation();
                 const newStatus = e.target.value;
                 if (db[activeCategory][index]) {
                   db[activeCategory][index].status = newStatus;
+                  await saveRecordToTable(activeCategory, db[activeCategory][index]);
                 }
                 select.className = "inline-status-select " + getStatusClass(newStatus);
-
-                const serial = db[activeCategory][index] ? db[activeCategory][index].serial : null;
-                if (serial && serial !== "—") {
-                  Object.keys(db).forEach(cat => {
-                    if (Array.isArray(db[cat])) {
-                      db[cat].forEach(dbItem => {
-                        if (dbItem && dbItem.serial === serial) {
-                          dbItem.status = newStatus;
-                        }
-                      });
-                    }
-                  });
-                }
-                saveDatabase();
               });
 
               select.addEventListener("click", (e) => { e.stopPropagation(); });
@@ -862,7 +939,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
               });
 
-              textarea.addEventListener("blur", () => {
+              textarea.addEventListener("blur", async () => {
                 textarea.style.position = "static";
                 textarea.style.zIndex = "auto";
                 textarea.style.background = "transparent";
@@ -877,6 +954,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                 textarea.style.left = "auto";
                 textarea.style.top = "auto";
                 
+                if (db[activeCategory][index]) {
+                  await saveRecordToTable(activeCategory, db[activeCategory][index]);
+                }
                 buildTableGrid(activeCategory);
               });
 
@@ -893,7 +973,6 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (db[activeCategory][index]) {
                   db[activeCategory][index].remarks = fullText;
                 }
-                saveDatabase();
                 
                 if (fullText.includes("\n")) {
                   textarea.style.height = "auto";
@@ -906,38 +985,23 @@ document.addEventListener("DOMContentLoaded", async () => {
               textarea.addEventListener("click", (e) => { e.stopPropagation(); });
               remarksWrapper.appendChild(textarea);
 
-              // Note button exclusively for Cellphone menu item rows
               if (activeCategory === "Cellphone") {
                 const noteBtn = document.createElement("button");
                 noteBtn.type = "button";
                 noteBtn.innerHTML = "🏷️";
-                noteBtn.title = "";
                 noteBtn.style.cssText = "background: var(--bg-hover, #1e2548); border: 1px solid var(--border-color, #232c4d); color: var(--text-main); border-radius: 4px; padding: 2px 6px; font-size: 0.75rem; cursor: pointer; flex-shrink: 0;";
                 
                 noteBtn.addEventListener("mouseenter", (e) => {
                   const currentItem = db["Cellphone"][index] || {};
                   const rows = [];
                   
-                  if (currentItem.macAddress) {
-                    rows.push(`<div class="hover-row"><span class="hover-label">MAC:</span><span class="hover-val">${currentItem.macAddress}</span></div>`);
-                  }
-                  if (currentItem.phoneNumber) {
-                    rows.push(`<div class="hover-row"><span class="hover-label">PHONE:</span><span class="hover-val">${currentItem.phoneNumber}</span></div>`);
-                  }
-                  if (currentItem.phoneImei1) {
-                    rows.push(`<div class="hover-row"><span class="hover-label">IMEI 1:</span><span class="hover-val">${currentItem.phoneImei1}</span></div>`);
-                  }
-                  if (currentItem.sapFaAsset) {
-                    rows.push(`<div class="hover-row"><span class="hover-label">SAP FA:</span><span class="hover-val">${currentItem.sapFaAsset}</span></div>`);
-                  }
+                  if (currentItem.macAddress) rows.push(`<div class="hover-row"><span class="hover-label">MAC:</span><span class="hover-val">${currentItem.macAddress}</span></div>`);
+                  if (currentItem.phoneNumber) rows.push(`<div class="hover-row"><span class="hover-label">PHONE:</span><span class="hover-val">${currentItem.phoneNumber}</span></div>`);
+                  if (currentItem.phoneImei1) rows.push(`<div class="hover-row"><span class="hover-label">IMEI 1:</span><span class="hover-val">${currentItem.phoneImei1}</span></div>`);
+                  if (currentItem.sapFaAsset) rows.push(`<div class="hover-row"><span class="hover-label">SAP FA:</span><span class="hover-val">${currentItem.sapFaAsset}</span></div>`);
 
                   if (rows.length > 0) {
-                    cellHoverCard.innerHTML = `
-                      <div class="hover-title">CELLPHONE DETAILS</div>
-                      <div class="hover-content">
-                        ${rows.join('')}
-                      </div>
-                    `;
+                    cellHoverCard.innerHTML = `<div class="hover-title">CELLPHONE DETAILS</div><div class="hover-content">${rows.join('')}</div>`;
                     cellHoverCard.style.display = "block";
                     const cardWidth = cellHoverCard.offsetWidth || 180;
                     cellHoverCard.style.left = (e.clientX - cardWidth - 12) + "px";
@@ -945,17 +1009,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                   }
                 });
 
-                noteBtn.addEventListener("mousemove", (e) => {
-                  if (cellHoverCard.style.display === "block") {
-                    const cardWidth = cellHoverCard.offsetWidth || 180;
-                    cellHoverCard.style.left = (e.clientX - cardWidth - 12) + "px";
-                    cellHoverCard.style.top = (e.clientY + 6) + "px";
-                  }
-                });
-
-                noteBtn.addEventListener("mouseleave", () => {
-                  cellHoverCard.style.display = "none";
-                });
+                noteBtn.addEventListener("mouseleave", () => { cellHoverCard.style.display = "none"; });
 
                 noteBtn.addEventListener("click", (e) => {
                   e.stopPropagation();
@@ -1102,30 +1156,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      showConfirmModal("Are you sure you want to Permanently Delete this Item?", () => {
+      showConfirmModal("Are you sure you want to Permanently Delete this Item?", async () => {
         let indicesToDelete = Array.from(multiSelectedIndices).sort((a, b) => b - a);
         if (indicesToDelete.length === 0 && selectedIndex !== null) {
           indicesToDelete = [parseInt(selectedIndex)];
         }
 
-        indicesToDelete.forEach((idx) => {
+        for (const idx of indicesToDelete) {
           const deletedItem = db[activeCategory][idx];
-          if (activeCategory === "Stock In / Received" && deletedItem && deletedItem.serial) {
-            const serialToDelete = deletedItem.serial;
-            Object.keys(db).forEach((catKey) => {
-              if (Array.isArray(db[catKey])) {
-                db[catKey] = db[catKey].filter((item) => item && item.serial !== serialToDelete);
-              }
-            });
+          if (deletedItem && deletedItem.serial) {
+            await deleteRecordFromTable(activeCategory, deletedItem.serial);
           }
           db[activeCategory][idx] = null;
-        });
+        }
         db[activeCategory] = db[activeCategory].filter(item => item !== null);
 
         multiDeleteMode = false;
         multiSelectedIndices.clear();
         nodes.triggerDeleteBtn.classList.remove("active-delete-mode");
-        saveDatabase();
+        localStorage.setItem("plaspack_inventory_db", JSON.stringify(db));
         buildTableGrid(activeCategory);
       });
     });
@@ -1155,7 +1204,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  function handleSaveAsset() {
+  async function handleSaveAsset() {
     const inputDeviceType = nodes.deviceInput.value.trim();
     const rawDate = document.getElementById("assetDate").value;
     const formattedShortDate = convertToShortDate(rawDate);
@@ -1230,6 +1279,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         sapFaAsset: existingRecord.sapFaAsset || ""
       };
       db[activeCategory][targetIndex] = formattedRow;
+      await saveRecordToTable(activeCategory, formattedRow);
     } else {
       for (let i = 0; i < unitsCount; i++) {
         const formattedRow = {
@@ -1259,6 +1309,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (activeCategory === "Stock Out / Released") {
           db["Stock Out / Released"].push(formattedRow);
+          await saveRecordToTable("Stock Out / Released", formattedRow);
 
           const targetCat = resolveTargetCategory(inputDeviceType);
           if (targetCat && db[targetCat]) {
@@ -1271,25 +1322,29 @@ document.addEventListener("DOMContentLoaded", async () => {
               matchedItem.erf = formattedRow.erf;
               matchedItem.remarks = formattedRow.remarks;
               if (rawPriceInput) matchedItem.price = formattedPrice;
+              await saveRecordToTable(targetCat, matchedItem);
             } else {
-              db[targetCat].push({ ...formattedRow, device: inputDeviceType, status: chosenStatus });
+              const newCatItem = { ...formattedRow, device: inputDeviceType, status: chosenStatus };
+              db[targetCat].push(newCatItem);
+              await saveRecordToTable(targetCat, newCatItem);
             }
           }
         } else {
           if (!db[activeCategory]) db[activeCategory] = [];
           db[activeCategory].push(formattedRow);
+          await saveRecordToTable(activeCategory, formattedRow);
 
           const targetCat = resolveTargetCategory(inputDeviceType);
           if (targetCat) {
             if (!db[targetCat]) db[targetCat] = [];
             const categoryCopyRow = { ...formattedRow, device: inputDeviceType, status: "Extra" };
             db[targetCat].push(categoryCopyRow);
+            await saveRecordToTable(targetCat, categoryCopyRow);
           }
         }
       }
     }
 
-    saveDatabase();
     dismissModal();
     buildTableGrid(activeCategory);
   }
