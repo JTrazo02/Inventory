@@ -177,7 +177,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const statusSelect = document.getElementById("assetStatus");
-    if (statusSelect) statusSelect.value = "Extra";
+    if (statusSelect) statusSelect.value = "In Service";
   };
 
   const dismissModal = () => {
