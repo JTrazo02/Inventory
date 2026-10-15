@@ -173,7 +173,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const statusSelect = document.getElementById("assetStatus");
-    if (statusSelect) statusSelect.value = "Extra";
+    if (statusSelect) statusSelect.value = "In Service";
   };
 
   const dismissModal = () => {
@@ -709,7 +709,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (nodes.triggerRecoverBtn) nodes.triggerRecoverBtn.style.display = "none";
 
       const addBtn = nodes.globalActions.querySelector(".action-add");
-      if (addBtn) addBtn.style.display = "flex";
+      if (addBtn) {
+        if (category === "Stock In / Received") {
+          addBtn.style.display = "flex";
+          addBtn.textContent = "+";
+        } else if (category === "Stock Out / Released") {
+          addBtn.style.display = "flex";
+          addBtn.textContent = "-";
+        } else {
+          addBtn.style.display = "none";
+        }
+      }
 
       table.className = "data-table eleven-cols";
 
