@@ -315,7 +315,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         .from("inventory_store")
         .select("content")
         .eq("id", "main_db")
-        .single();
+        .maybeSingle();
 
       if (data && data.content) {
         db = data.content;
