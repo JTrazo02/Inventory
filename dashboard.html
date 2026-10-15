@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIC Inventory Dashboard</title>
+    <link rel="stylesheet" href="dashboard.css" />
+  </head>
+  <body>
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header" id="sidebarToggle">
+        <div class="logo-crop-box">
+          <img src="WPLASPACK.png" alt="Company Logo" class="company-logo" />
+        </div>
+      </div>
+      <div class="menu-container">
+        <ul class="nav-list">
+          <li class="active">
+            <a href="#">
+              <span class="menu-icon-emoji">📊</span>
+              <span class="links-name">Summary</span>
+            </a>
+          </li>
+          <li>
+            <a href="#">
+              <span class="menu-icon-emoji">📥</span>
+              <span class="links-name">Stock In / Received</span>
+            </a>
+          </li>
+          <li>
+            <a href="#">
+              <span class="menu-icon-emoji">📤</span>
+              <span class="links-name">Stock Out / Released</span>
+            </a>
+          </li>
+
+          <!-- ACCESSORIES -->
+          <li>
+            <a href="#">
+              <span class="menu-icon-emoji">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="4" r="2.5" />
+                  <circle cx="8" cy="12" r="2.5" />
+                  <circle cx="16" cy="12" r="2.5" />
+                  <circle cx="4" cy="20" r="2.5" />
+                  <circle cx="12" cy="20" r="2.5" />
+                  <circle cx="20" cy="20" r="2.5" />
+                </svg>
+              </span>
+              <span class="links-name">Accessories</span>
+            </a>
+          </li>
+
+          <li>
+            <a href="#"><span class="menu-icon-emoji">📹</span><span class="links-name">CCTV</span></a>
+          </li>
+          <li>
+            <a href="#"><span class="menu-icon-emoji">📱</span><span class="links-name">Cellphone</span></a>
+          </li>
+          <li>
+            <a href="#"><span class="menu-icon-emoji">⌨️</span><span class="links-name">Keyboard/Mouse</span></a>
+          </li>
+          <li>
+            <a href="#"><span class="menu-icon-emoji">🌐</span><span class="links-name">Network Devices</span></a>
+          </li>
+          <li>
+            <a href="#"><span class="menu-icon-emoji">💾</span><span class="links-name">Storage</span></a>
+          </li>
+
+          <!-- ACCESS POINTS -->
+          <li>
+            <a href="#">
+              <span class="menu-icon-emoji">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                  <path d="M5 12.55a11 11 0 0 1 14 0" />
+                  <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+                  <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+                  <line x1="12" y1="20" x2="12.01" y2="20" stroke-width="3" />
+                </svg>
+              </span>
+              <span class="links-name">Access Points</span>
+            </a>
+          </li>
+
+          <li>
+            <a href="#"><span class="menu-icon-emoji">🎒</span><span class="links-name">Bags</span></a>
+          </li>
+
+          <!-- BIOMETRICS -->
+          <li>
+            <a href="#">
+              <span class="menu-icon-emoji">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 8V5a1 1 0 0 1 1-1h3" />
+                  <path d="M20 8V5a1 1 0 0 0-1-1h-3" />
+                  <path d="M4 16v3a1 1 0 0 0 1 1h3" />
+                  <path d="M20 16v3a1 1 0 0 1-1 1h-3" />
+                  <circle cx="9" cy="10" r="1" fill="currentColor" />
+                  <circle cx="15" cy="10" r="1" fill="currentColor" />
+                  <path d="M9.5 15c1 1 4 1 5 0" />
+                </svg>
+              </span>
+              <span class="links-name">Biometrics</span>
+            </a>
+          </li>
+
+          <li>
+            <a href="#"><span class="menu-icon-emoji">💻</span><span class="links-name">Laptop</span></a>
+          </li>
+          <li>
+            <a href="#"><span class="menu-icon-emoji">🖥️</span><span class="links-name">Monitor</span></a>
+          </li>
+          <li>
+            <a href="#"><span class="menu-icon-emoji">🖨️</span><span class="links-name">Printer</span></a>
+          </li>
+          <li>
+            <a href="#"><span class="menu-icon-emoji">🗄️</span><span class="links-name">Server</span></a>
+          </li>
+          <li>
+            <a href="#"><span class="menu-icon-emoji">☎️</span><span class="links-name">Telephone</span></a>
+          </li>
+
+          <!-- UPS -->
+          <li>
+            <a href="#">
+              <span class="menu-icon-emoji">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  <path d="M9 12l2 2 4-4" />
+                </svg>
+              </span>
+              <span class="links-name">UPS</span>
+            </a>
+          </li>
+
+          <li>
+            <a href="#"><span class="menu-icon-emoji">🔋</span><span class="links-name">UPS Battery</span></a>
+          </li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- MAIN WORKSPACE -->
+    <main class="main-content">
+      <header class="content-header">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <h1 class="page-title" id="dynamicTitle">Summary</h1>
+          <div id="summaryYearContainer" style="display: flex; align-items: center">
+            <select id="summaryYearSelect" style="background-color: #121626; border: 1px solid var(--border-color); color: var(--accent-cyan); padding: 4px 10px; border-radius: 4px; font-size: 0.9rem; font-weight: 600; outline: none; cursor: pointer;">
+              <!-- Dynamically populated via JS -->
+            </select>
+          </div>
+        </div>
+        <div class="action-buttons" id="globalActions">
+  <button class="action-btn action-recover" id="triggerRecoverBtn" title="Recover">🔄</button>
+  <button class="action-btn action-add" id="openAddModalBtn" title="Add Record">+</button>
+  <button class="action-btn action-edit" id="openEditModalBtn" title="Edit Record">✎</button>
+  <button class="action-btn action-del" id="triggerDeleteBtn" title="Delete Record">🗑</button>
+  <button class="action-btn action-logout" id="logoutBtn" title="Logout">⏻</button>
+</div>
+      </header>
+
+      <section class="content-view" id="contentView">
+        <!-- Dynamic Tables Render Here -->
+      </section>
+    </main>
+
+    <!-- ENTRY / EDIT MODAL OVERLAY -->
+    <div class="modal-overlay" id="addItemModal">
+      <div class="modal-wide-bar">
+        <div class="modal-bar-header">
+          <h2>Record Entry — <span id="modalCategoryScope">Stock In / Received</span></h2>
+          <span class="close-bar-btn" id="closeModalBtn">&times;</span>
+        </div>
+        
+        <div class="modal-form-body" id="addItemForm">
+          <input type="hidden" id="formEditRowIndex" />
+          
+          <!-- Custom In-Form Error Alert Banner -->
+          <div id="formErrorAlert" style="display: none; background-color: rgba(255, 75, 75, 0.15); border: 1px solid #ff4b4b; color: #ff6b6b; padding: 10px 14px; border-radius: 4px; font-size: 0.85rem; font-weight: 500; margin-bottom: 12px;"></div>
+
+          <div class="horizontal-form-row">
+            <div class="form-grid-fields-wrapper">
+              
+              <!-- Date Field -->
+              <div class="bar-input-group" id="groupDate">
+                <label for="assetDate" id="lblDate">Date Received</label>
+                <input type="date" id="assetDate" autocomplete="off" />
+              </div>
+
+              <!-- Device Type Combobox -->
+              <div class="bar-input-group searchable-combobox" id="groupDevice">
+                <label for="assetDevice">Device Type</label>
+                <div class="combobox-wrapper">
+                  <input type="text" id="assetDevice" role="combobox" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+                  <span class="combobox-arrow">&#9660;</span>
+                </div>
+                <div class="combobox-dropdown" id="deviceDropdownOptions"></div>
+              </div>
+
+              <!-- Name Field -->
+              <div class="bar-input-group" id="groupName">
+                <label for="assetName">Name</label>
+                <input type="text" id="assetName" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+              </div>
+
+              <!-- Model Field -->
+              <div class="bar-input-group" id="groupModel">
+                <label for="assetModel">Model</label>
+                <input type="text" id="assetModel" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+              </div>
+
+              <!-- Serial Number Field (Dynamically toggles arrow via JS) -->
+              <div class="bar-input-group" id="groupSerial">
+                <label for="assetSerial" id="lblSerial">Serial #</label>
+                <div class="combobox-wrapper" id="serialWrapper">
+                  <input type="text" id="assetSerial" role="combobox" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+                </div>
+                <div class="combobox-dropdown" id="serialDropdownOptions"></div>
+              </div>
+              <div class="bar-input-group" id="groupPrice">
+                <label for="assetPrice">Price</label>
+                  <input type="text" id="assetPrice" placeholder="">
+              </div>
+
+              <!-- Units / Quantity -->
+              <div class="bar-input-group" id="groupUnits">
+                <label for="assetUnits">Units</label>
+                <input type="number" id="assetUnits" value="1" min="1" autocomplete="off" />
+              </div>
+
+              <!-- Remaining fields wrapper -->
+              <div id="remainingFieldsWrapper" style="display: flex; gap: 8px">
+                <div class="bar-input-group" id="groupDeployed">
+                  <label for="assetDeployed">Deployed To</label>
+                  <input type="text" id="assetDeployed" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+                </div>
+                <div class="bar-input-group" id="groupStatus">
+                  <label for="assetStatus">Status</label>
+                  <select id="assetStatus">
+                    <option value="Awol">Awol</option>
+                    <option value="Damaged">Damaged</option>
+                    <option value="Defective">Defective</option>
+                    <option value="Disposed">Disposed</option>
+                    <option value="Extra" selected>Extra</option>
+                    <option value="In Service">In Service</option>
+                    <option value="Lost / Stolen">Lost / Stolen</option>
+                    <option value="Non-Operational">Non-Operational</option>
+                    <option value="Out of Service">Out of Service</option>
+                    <option value="Reassigned">Reassigned</option>
+                    <option value="Sold">Sold</option>
+                    <option value="Standby">Standby</option>
+                    <option value="Under Repair">Under Repair</option>
+                  </select>
+                </div>
+                <div class="bar-input-group" id="groupOth">
+                  <label for="assetOth">OTH #</label>
+                  <input type="text" id="assetOth" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+                </div>
+                <div class="bar-input-group" id="groupErf">
+                  <label for="assetErf">ERF #</label>
+                  <input type="text" id="assetErf" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="center-bottom-actions-bar">
+            <button type="button" class="cancel-bar-btn" id="cancelModalBtn">Cancel</button>
+            <button type="button" class="save-bar-btn" id="saveAssetBtn">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+<!-- Custom Confirmation Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-wide-bar" style="max-width: 420px;">
+    <div class="modal-bar-header">
+      <h2>Confirmation</h2>
+      <span class="close-bar-btn" id="closeConfirmBtn">&times;</span>
+    </div>
+    <p id="confirmMessage" style="color: #cbd5e1; font-size: 0.88rem; margin-bottom: 20px; line-height: 1.4;">
+      Are you sure you want to Restore Yesterday's Inventory?
+    </p>
+    <div class="center-bottom-actions-bar">
+      <button type="button" class="cancel-bar-btn" id="cancelConfirmBtn">Cancel</button>
+      <button type="button" class="save-bar-btn" id="okConfirmBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+    <script src="main.js"></script>
+  </body>
+</html>

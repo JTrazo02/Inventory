@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Plaspack Industrial Corp - Inventory Login</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="login-container">
+      <!-- Header Text -->
+      <h1 class="company-name">PLASPACK INDUSTRIAL CORPORATION</h1>
+      <h2 class="page-title">INVENTORY</h2>
+
+      <!-- Login Form -->
+      <form id="loginForm">
+        <div class="input-group password-group">
+          <input
+            type="password"
+            id="invCode"
+            placeholder="CODE"
+            required
+            autocomplete="off"
+          />
+          <span id="togglePassword" class="eye-icon" title="Show Code">👁️</span>
+        </div>
+        <button type="submit" class="verify-btn">VERIFY</button>
+      </form>
+      <p id="errorMessage" class="error-msg"></p>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
