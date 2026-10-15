@@ -1,6 +1,3 @@
-// ==========================================
-// SUPABASE CLIENT INITIALIZATION
-// ==========================================
 const SUPABASE_URL = "https://ajyhxlvqjkgovcrfsnig.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_wa_eoq6Z21iTyijZgWALkg_6DXwPCWw";
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
