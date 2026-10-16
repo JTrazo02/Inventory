@@ -177,7 +177,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const statusSelect = document.getElementById("assetStatus");
-    if (statusSelect) statusSelect.value = "Extra";
+    if (statusSelect) statusSelect.value = "In Service";
   };
 
   const dismissModal = () => {
@@ -449,11 +449,37 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!serialNumber || serialNumber === "—") return;
 
     if (category === "Stock In / Received") {
-      // 1. Delete from stock_in table
       await _supabase.from("stock_in").delete().eq("serial_number", serialNumber);
-
-      // 2. Automatically delete the matching serial from inventory_items across all categories
       await _supabase.from("inventory_items").delete().eq("serial_number", serialNumber);
+
+      Object.keys(db).forEach((key) => {
+        if (Array.isArray(db[key])) {
+          db[key] = db[key].filter(item => !item || item.serial !== serialNumber);
+        }
+      });
+    } else if (category === "Stock Out / Released") {
+      await _supabase.from("stock_out").delete().eq("serial_number", serialNumber);
+
+      for (const key of Object.keys(db)) {
+        if (Array.isArray(db[key])) {
+          db[key].forEach(async (item) => {
+            if (item && item.serial === serialNumber) {
+              if (item.date && item.date.includes("|")) {
+                item.date = item.date.split("|")[0].trim();
+              }
+              item.deployed = "";
+              item.status = "Extra";
+              item.oth = "";
+              item.erf = "";
+              if (item.supabaseId) {
+                await saveRecordToTable(key, item);
+              }
+            }
+          });
+        }
+      }
+
+      db["Stock Out / Released"] = db["Stock Out / Released"].filter(item => !item || item.serial !== serialNumber);
     } else {
       const tableName = getTableName(category);
       const query = _supabase.from(tableName).delete();
@@ -462,8 +488,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       } else {
         await query.eq("serial_number", serialNumber);
       }
+      db[category] = db[category].filter(item => !item || item.serial !== serialNumber);
     }
+
+    localStorage.setItem("plaspack_inventory_db", JSON.stringify(db));
   }
+
   function subscribeToRealtimeSync() {
     _supabase
       .channel("public:all_inventory")
@@ -1261,14 +1291,11 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (deletedItem && deletedItem.serial) {
             await deleteRecordFromTable(activeCategory, deletedItem.serial);
           }
-          db[activeCategory][idx] = null;
         }
-        db[activeCategory] = db[activeCategory].filter(item => item !== null);
 
         multiDeleteMode = false;
         multiSelectedIndices.clear();
         nodes.triggerDeleteBtn.classList.remove("active-delete-mode");
-        localStorage.setItem("plaspack_inventory_db", JSON.stringify(db));
         buildTableGrid(activeCategory);
       });
     });
