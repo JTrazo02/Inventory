@@ -18,6 +18,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     openEditModalBtn: document.getElementById("openEditModalBtn"),
     triggerDeleteBtn: document.getElementById("triggerDeleteBtn"),
     triggerRecoverBtn: document.getElementById("triggerRecoverBtn"),
+    triggerListManagerBtn: document.getElementById("triggerListManagerBtn"),
+    nameModelManagerModal: document.getElementById("nameModelManagerModal"),
+    closeManagerModalBtn: document.getElementById("closeManagerModalBtn"),
+    managerCloseBtn: document.getElementById("managerCloseBtn"),
+    bulkDeviceTextarea: document.getElementById("bulkDeviceTextarea"),
+    bulkNameTextarea: document.getElementById("bulkNameTextarea"),
+    bulkModelTextarea: document.getElementById("bulkModelTextarea"),
+    deviceGutter: document.getElementById("deviceGutter"),
+    nameGutter: document.getElementById("nameGutter"),
+    modelGutter: document.getElementById("modelGutter"),
     closeModalBtn: document.getElementById("closeModalBtn"),
     cancelModalBtn: document.getElementById("cancelModalBtn"),
     addItemForm: document.getElementById("addItemForm"),
@@ -45,10 +55,127 @@ document.addEventListener("DOMContentLoaded", async () => {
     okConfirmBtn: document.getElementById("okConfirmBtn"),
   };
 
-  // --- FLOATING HOVER CARD ---
-  const cellHoverCard = document.createElement("div");
-  cellHoverCard.id = "cellHoverCard";
-  document.body.appendChild(cellHoverCard);
+  // --- DEVICE TYPE | NAME | MODEL MASTER LIST STATE ---
+  let nameModelMasterList = [];
+
+  async function loadNameModelsFromSupabase() {
+    try {
+      const { data } = await _supabase.from("name_model_list").select("*");
+      if (data) {
+        nameModelMasterList = data.map(r => ({ id: r.id, deviceType: r.device_type || "", name: r.name || "", model: r.model || "" }));
+      }
+    } catch (err) {
+      console.warn("Could not load name_model_list from Supabase, checking local storage", err);
+      const local = localStorage.getItem("plaspack_name_model_list");
+      if (local) nameModelMasterList = JSON.parse(local);
+    }
+  }
+
+  async function saveNameToSupabase(item) {
+    const { data } = await _supabase.from("name_model_list").insert([{ device_type: item.deviceType, name: item.name, model: item.model }]).select();
+    if (data && data[0] && data[0].id) {
+      item.id = data[0].id;
+    }
+    localStorage.setItem("plaspack_name_model_list", JSON.stringify(nameModelMasterList));
+  }
+
+  // --- EMBEDDED INDEPENDENT GUTTER & SYNCHRONIZED SCROLLING LOGIC ---
+  function updateColumnGutter(textareaEl, gutterEl) {
+    if (!textareaEl || !gutterEl) return;
+    const linesCount = Math.max((textareaEl.value.match(/\n/g) || []).length + 1, 10);
+    let html = "";
+    for (let i = 1; i <= linesCount; i++) {
+      html += i + "\n";
+    }
+    gutterEl.textContent = html;
+  }
+
+  function setupTextareaGutterSync(textareaEl, gutterEl, storageKey) {
+    if (!textareaEl || !gutterEl) return;
+
+    textareaEl.value = localStorage.getItem(storageKey) || "";
+    updateColumnGutter(textareaEl, gutterEl);
+
+    textareaEl.addEventListener("input", () => {
+      localStorage.setItem(storageKey, textareaEl.value);
+      updateColumnGutter(textareaEl, gutterEl);
+    });
+
+    textareaEl.addEventListener("scroll", () => {
+      gutterEl.scrollTop = textareaEl.scrollTop;
+    });
+  }
+
+  setupTextareaGutterSync(nodes.bulkDeviceTextarea, nodes.deviceGutter, "plaspack_draft_device");
+  setupTextareaGutterSync(nodes.bulkNameTextarea, nodes.nameGutter, "plaspack_draft_name");
+  setupTextareaGutterSync(nodes.bulkModelTextarea, nodes.modelGutter, "plaspack_draft_model");
+
+  if (nodes.triggerListManagerBtn) {
+    nodes.triggerListManagerBtn.addEventListener("click", () => {
+      if (nodes.nameModelManagerModal) {
+        nodes.nameModelManagerModal.classList.add("show");
+        updateColumnGutter(nodes.bulkDeviceTextarea, nodes.deviceGutter);
+        updateColumnGutter(nodes.bulkNameTextarea, nodes.nameGutter);
+        updateColumnGutter(nodes.bulkModelTextarea, nodes.modelGutter);
+      }
+    });
+  }
+
+  // --- AUTOMATIC IMPORT ON DONE / CLOSE ---
+  async function processAndSaveBulkImport() {
+    const deviceRaw = nodes.bulkDeviceTextarea ? nodes.bulkDeviceTextarea.value : "";
+    const nameRaw = nodes.bulkNameTextarea ? nodes.bulkNameTextarea.value : "";
+    const modelRaw = nodes.bulkModelTextarea ? nodes.bulkModelTextarea.value : "";
+
+    if (!deviceRaw.trim() && !nameRaw.trim() && !modelRaw.trim()) return;
+
+    const deviceLines = deviceRaw.split("\n").map(l => l.trim());
+    const nameLines = nameRaw.split("\n").map(l => l.trim());
+    const modelLines = modelRaw.split("\n").map(l => l.trim());
+
+    const maxRows = Math.max(deviceLines.length, nameLines.length, modelLines.length);
+    let addedCount = 0;
+
+    for (let i = 0; i < maxRows; i++) {
+      const dt = deviceLines[i] || "";
+      const n = nameLines[i] || "";
+      const m = modelLines[i] || "";
+
+      if (dt || n || m) {
+        const exists = nameModelMasterList.some(item => 
+          item.deviceType.toLowerCase() === dt.toLowerCase() &&
+          item.name.toLowerCase() === n.toLowerCase() &&
+          item.model.toLowerCase() === m.toLowerCase()
+        );
+
+        if (!exists) {
+          const newItem = { deviceType: dt, name: n, model: m };
+          nameModelMasterList.push(newItem);
+          await saveNameToSupabase(newItem);
+          addedCount++;
+        }
+      }
+    }
+
+    if (addedCount > 0) {
+      console.log(`Auto-imported and synced ${addedCount} new items from columns.`);
+    }
+  }
+
+  const closeManagerModal = async () => {
+    if (nodes.nameModelManagerModal) {
+      await processAndSaveBulkImport();
+      nodes.nameModelManagerModal.classList.remove("show");
+    }
+  };
+
+  if (nodes.closeManagerModalBtn) nodes.closeManagerModalBtn.addEventListener("click", closeManagerModal);
+  if (nodes.managerCloseBtn) nodes.managerCloseBtn.addEventListener("click", closeManagerModal);
+  if (nodes.nameModelManagerModal) {
+    nodes.nameModelManagerModal.addEventListener("click", async (e) => {
+      if (e.target === nodes.nameModelManagerModal) await closeManagerModal();
+    });
+  }
 
   // --- CELLPHONE DETAILS MODAL ---
   const cellModalOverlay = document.createElement("div");
@@ -89,7 +216,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.body.appendChild(cellModalOverlay);
 
   let editingCellRowIndex = null;
-
   const closeCellModal = () => {
     cellModalOverlay.classList.remove("show");
     editingCellRowIndex = null;
@@ -101,8 +227,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.target === cellModalOverlay) closeCellModal();
   });
 
-  const cellDetailsForm = document.getElementById("cellDetailsForm");
-  cellDetailsForm.addEventListener("submit", async (e) => {
+  document.getElementById("cellDetailsForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     if (editingCellRowIndex !== null && db["Cellphone"][editingCellRowIndex]) {
       const record = db["Cellphone"][editingCellRowIndex];
@@ -127,7 +252,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (nodes.summaryYearSelect) {
     const currentRealYear = new Date().getFullYear(); 
     nodes.summaryYearSelect.innerHTML = "";
-    
     for (let y = currentRealYear; y >= 2019; y--) {
       const option = document.createElement("option");
       option.value = y;
@@ -141,10 +265,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function formatPeso(val) {
     const cleanNum = parseFloat(String(val).replace(/[^\d.]/g, ""));
     if (isNaN(cleanNum)) return "—";
-    return "₱" + cleanNum.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
+    return "₱" + cleanNum.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   const priceInput = document.getElementById("assetPrice");
@@ -152,16 +273,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     priceInput.addEventListener("input", (e) => {
       let val = e.target.value.replace(/[^0-9.]/g, "");
       const parts = val.split(".");
-      if (parts.length > 2) {
-        val = parts[0] + "." + parts.slice(1).join("");
-      }
+      if (parts.length > 2) val = parts[0] + "." + parts.slice(1).join("");
       e.target.value = val;
     });
-
     priceInput.addEventListener("keypress", (e) => {
-      if (!/[0-9.]/.test(e.key)) {
-        e.preventDefault();
-      }
+      if (!/[0-9.]/.test(e.key)) e.preventDefault();
     });
   }
 
@@ -225,17 +341,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (nodes.closeConfirmBtn) nodes.closeConfirmBtn.addEventListener("click", hideConfirmModal);
   if (nodes.cancelConfirmBtn) nodes.cancelConfirmBtn.addEventListener("click", hideConfirmModal);
-  if (nodes.confirmModal) {
-    nodes.confirmModal.addEventListener("click", (e) => {
-      if (e.target === nodes.confirmModal) hideConfirmModal();
-    });
-  }
 
-  document.addEventListener("keydown", (e) => {
+  document.addEventListener("keydown", async (e) => {
     if (e.key === "Escape") {
       if (nodes.addItemModal.classList.contains("show")) dismissModal();
       if (nodes.confirmModal && nodes.confirmModal.classList.contains("show")) hideConfirmModal();
       if (cellModalOverlay.classList.contains("show")) closeCellModal();
+      if (nodes.nameModelManagerModal && nodes.nameModelManagerModal.classList.contains("show")) await closeManagerModal();
     }
   });
 
@@ -301,7 +413,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   devicesList.forEach((cat) => { if (!db[cat]) db[cat] = []; });
   Object.keys(categoryGroupMap).forEach((group) => { if (!db[group]) db[group] = []; });
 
-  // --- SUPABASE RELATIONAL MAPPING FUNCTIONS ---
   function getTableName(category) {
     if (category === "Stock In / Received") return "stock_in";
     if (category === "Stock Out / Released") return "stock_out";
@@ -310,23 +421,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function mapItemToRow(category, item) {
     let base = {};
-
     if (category === "Stock In / Received") {
       base = {
-        date_received: item.date && item.date !== "—" ? item.date : null,
-        device_type: item.device && item.device !== "—" ? item.device : null,
-        name: item.name && item.name !== "—" ? item.name : null,
-        model: item.model && item.model !== "—" ? item.model : null,
-        serial_number: item.serial && item.serial !== "—" ? item.serial : null,
-        price: item.price && item.price !== "—" ? item.price : null,
+        date_received: item.date !== "—" ? item.date : null,
+        device_type: item.device !== "—" ? item.device : null,
+        name: item.name !== "—" ? item.name : null,
+        model: item.model !== "—" ? item.model : null,
+        serial_number: item.serial !== "—" ? item.serial : null,
+        price: item.price !== "—" ? item.price : null,
       };
     } else if (category === "Stock Out / Released") {
       base = {
-        date_released: item.date && item.date !== "—" ? item.date : null,
-        device_type: item.device && item.device !== "—" ? item.device : null,
-        name: item.name && item.name !== "—" ? item.name : null,
-        model: item.model && item.model !== "—" ? item.model : null,
-        serial_number: item.serial && item.serial !== "—" ? item.serial : null,
+        date_released: item.date !== "—" ? item.date : null,
+        device_type: item.device !== "—" ? item.device : null,
+        name: item.name !== "—" ? item.name : null,
+        model: item.model !== "—" ? item.model : null,
+        serial_number: item.serial !== "—" ? item.serial : null,
         deployed_to: item.deployed !== "" ? item.deployed : null,
         status: item.status || "Extra",
         oth: item.oth !== "" ? item.oth : null,
@@ -335,11 +445,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else {
       base = {
         category_group: category,
-        date_received: item.date && item.date !== "—" ? item.date : null,
-        device_type: item.device && item.device !== "—" ? item.device : null,
-        name: item.name && item.name !== "—" ? item.name : null,
-        model: item.model && item.model !== "—" ? item.model : null,
-        serial_number: item.serial && item.serial !== "—" ? item.serial : null,
+        date_received: item.date !== "—" ? item.date : null,
+        device_type: item.device !== "—" ? item.device : null,
+        name: item.name !== "—" ? item.name : null,
+        model: item.model !== "—" ? item.model : null,
+        serial_number: item.serial !== "—" ? item.serial : null,
         deployed_to: item.deployed !== "" ? item.deployed : null,
         status: item.status || "Extra",
         oth: item.oth !== "" ? item.oth : null,
@@ -351,11 +461,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         sap_fa_asset: item.sapFaAsset !== "" ? item.sapFaAsset : null,
       };
     }
-
-    if (item.supabaseId) {
-      base.id = item.supabaseId;
-    }
-
+    if (item.supabaseId) base.id = item.supabaseId;
     return base;
   }
 
@@ -383,20 +489,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadDatabaseFromSupabase() {
     try {
       const { data: stockInData } = await _supabase.from("stock_in").select("*");
-      if (stockInData) {
-        db["Stock In / Received"] = stockInData.map(mapRowToItem);
-      }
+      if (stockInData) db["Stock In / Received"] = stockInData.map(mapRowToItem);
 
       const { data: stockOutData } = await _supabase.from("stock_out").select("*");
-      if (stockOutData) {
-        db["Stock Out / Released"] = stockOutData.map(mapRowToItem);
-      }
+      if (stockOutData) db["Stock Out / Released"] = stockOutData.map(mapRowToItem);
 
       const { data: itemsData } = await _supabase.from("inventory_items").select("*");
       if (itemsData) {
         devicesList.forEach((cat) => { db[cat] = []; });
         Object.keys(categoryGroupMap).forEach((group) => { db[group] = []; });
-
         itemsData.forEach((row) => {
           const cat = row.category_group;
           const mappedItem = mapRowToItem(row);
@@ -411,10 +512,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       const local = localStorage.getItem("plaspack_inventory_db");
       if (local) db = JSON.parse(local);
     }
-
-    devicesList.forEach((cat) => { if (!db[cat]) db[cat] = []; });
-    Object.keys(categoryGroupMap).forEach((group) => { if (!db[group]) db[group] = []; });
-
     buildTableGrid(activeCategory);
   }
 
@@ -423,62 +520,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     const rowPayload = mapItemToRow(category, item);
 
     if (item.supabaseId) {
-      const { error } = await _supabase
-        .from(tableName)
-        .update(rowPayload)
-        .eq("id", item.supabaseId);
-
-      if (error) console.error(`Error updating record in ${tableName}:`, error);
+      await _supabase.from(tableName).update(rowPayload).eq("id", item.supabaseId);
     } else {
-      const { data, error } = await _supabase
-        .from(tableName)
-        .insert([rowPayload])
-        .select();
-
-      if (error) {
-        console.error(`Error inserting record into ${tableName}:`, error);
-      } else if (data && data[0] && data[0].id) {
-        item.supabaseId = data[0].id;
-      }
+      const { data } = await _supabase.from(tableName).insert([rowPayload]).select();
+      if (data && data[0] && data[0].id) item.supabaseId = data[0].id;
     }
-    
     localStorage.setItem("plaspack_inventory_db", JSON.stringify(db));
   }
 
   async function deleteRecordFromTable(category, serialNumber) {
     if (!serialNumber || serialNumber === "—") return;
-
     if (category === "Stock In / Received") {
       await _supabase.from("stock_in").delete().eq("serial_number", serialNumber);
       await _supabase.from("inventory_items").delete().eq("serial_number", serialNumber);
-
       Object.keys(db).forEach((key) => {
-        if (Array.isArray(db[key])) {
-          db[key] = db[key].filter(item => !item || item.serial !== serialNumber);
-        }
+        if (Array.isArray(db[key])) db[key] = db[key].filter(item => !item || item.serial !== serialNumber);
       });
     } else if (category === "Stock Out / Released") {
       await _supabase.from("stock_out").delete().eq("serial_number", serialNumber);
-
       for (const key of Object.keys(db)) {
         if (Array.isArray(db[key])) {
           db[key].forEach(async (item) => {
             if (item && item.serial === serialNumber) {
-              if (item.date && item.date.includes("|")) {
-                item.date = item.date.split("|")[0].trim();
-              }
+              if (item.date && item.date.includes("|")) item.date = item.date.split("|")[0].trim();
               item.deployed = "";
               item.status = "Extra";
               item.oth = "";
               item.erf = "";
-              if (item.supabaseId) {
-                await saveRecordToTable(key, item);
-              }
+              if (item.supabaseId) await saveRecordToTable(key, item);
             }
           });
         }
       }
-
       db["Stock Out / Released"] = db["Stock Out / Released"].filter(item => !item || item.serial !== serialNumber);
     } else {
       const tableName = getTableName(category);
@@ -490,47 +563,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       db[category] = db[category].filter(item => !item || item.serial !== serialNumber);
     }
-
     localStorage.setItem("plaspack_inventory_db", JSON.stringify(db));
   }
 
   function subscribeToRealtimeSync() {
-    _supabase
-      .channel("public:all_inventory")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public" },
-        () => {
-          loadDatabaseFromSupabase();
-        }
-      )
-      .subscribe();
+    _supabase.channel("public:all_inventory").on("postgres_changes", { event: "*", schema: "public" }, () => {
+      loadDatabaseFromSupabase();
+    }).subscribe();
   }
-
-  function checkAndCreateDailySnapshot() {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const lastBackupDate = localStorage.getItem("plaspack_last_backup_date");
-
-    if (lastBackupDate !== todayStr) {
-      const currentDB = localStorage.getItem("plaspack_inventory_db");
-      if (currentDB) {
-        localStorage.setItem("plaspack_backup_yesterday", currentDB);
-        localStorage.setItem("plaspack_last_backup_date", todayStr);
-      }
-    }
-  }
-  checkAndCreateDailySnapshot();
 
   function convertToShortDate(dateString) {
     if (!dateString || !dateString.includes("-")) return dateString;
     const parts = dateString.split("-");
     return `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}/${parts[0].slice(-2)}`;
-  }
-
-  function convertToInputDate(shortDateString) {
-    if (!shortDateString || !shortDateString.includes("/")) return shortDateString;
-    const parts = shortDateString.split("/");
-    return `20${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`;
   }
 
   function fillDropdownOptions(filterText = "") {
@@ -552,6 +597,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       row.textContent = choice;
       row.addEventListener("click", () => {
         nodes.deviceInput.value = choice;
+        if (nodes.nameInput) nodes.nameInput.value = "";
+        if (nodes.modelInput) nodes.modelInput.value = "";
         closeComboboxMenu();
       });
       nodes.deviceDropdown.appendChild(row);
@@ -579,10 +626,122 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
     nodes.deviceInput.addEventListener("input", (e) => {
       fillDropdownOptions(e.target.value);
+      if (nodes.nameInput) nodes.nameInput.value = "";
+      if (nodes.modelInput) nodes.modelInput.value = "";
       openComboboxMenu();
     });
   }
 
+  // --- STRICT CASCADING AUTOCOMPLETE FOR NAME & MODEL ---
+  const nameDropdown = document.getElementById("nameDropdownOptions");
+  const modelDropdown = document.getElementById("modelDropdownOptions");
+  const comboboxNameGroup = document.getElementById("groupName");
+  const comboboxModelGroup = document.getElementById("groupModel");
+
+  function fillNameDropdownOptions(filterText = "") {
+    if (!nameDropdown) return;
+    nameDropdown.innerHTML = "";
+    const cleanFilter = filterText.toLowerCase().trim();
+    const currentDevice = nodes.deviceInput ? nodes.deviceInput.value.toLowerCase().trim() : "";
+
+    let available = nameModelMasterList;
+    if (currentDevice) {
+      available = nameModelMasterList.filter(i => i.deviceType && i.deviceType.toLowerCase() === currentDevice);
+    }
+
+    const uniqueNames = [...new Set(available.map(item => item.name).filter(Boolean))];
+    const matched = uniqueNames.filter(n => n.toLowerCase().includes(cleanFilter));
+
+    if (matched.length === 0) {
+      nameDropdown.style.display = "none";
+      return;
+    }
+
+    matched.forEach(choice => {
+      const row = document.createElement("div");
+      row.textContent = choice;
+      row.addEventListener("click", () => {
+        nodes.nameInput.value = choice;
+        
+        const matchedItems = nameModelMasterList.filter(i => 
+          i.name.toLowerCase() === choice.toLowerCase() && 
+          (!currentDevice || i.deviceType.toLowerCase() === currentDevice)
+        );
+        const uniqueModels = [...new Set(matchedItems.map(i => i.model).filter(Boolean))];
+
+        if (uniqueModels.length === 1 && nodes.modelInput) {
+          nodes.modelInput.value = uniqueModels[0];
+        } else if (nodes.modelInput) {
+          nodes.modelInput.value = "";
+        }
+        nameDropdown.style.display = "none";
+      });
+      nameDropdown.appendChild(row);
+    });
+  }
+
+  function fillModelDropdownOptions(filterText = "") {
+    if (!modelDropdown) return;
+    modelDropdown.innerHTML = "";
+    const cleanFilter = filterText.toLowerCase().trim();
+    const currentDevice = nodes.deviceInput ? nodes.deviceInput.value.toLowerCase().trim() : "";
+    const currentName = nodes.nameInput ? nodes.nameInput.value.toLowerCase().trim() : "";
+
+    let available = nameModelMasterList;
+    if (currentDevice) {
+      available = available.filter(i => i.deviceType && i.deviceType.toLowerCase() === currentDevice);
+    }
+    if (currentName) {
+      available = available.filter(i => i.name && i.name.toLowerCase() === currentName);
+    }
+
+    const uniqueModels = [...new Set(available.map(item => item.model).filter(Boolean))];
+    const matched = uniqueModels.filter(m => m.toLowerCase().includes(cleanFilter));
+
+    if (matched.length === 0) {
+      modelDropdown.style.display = "none";
+      return;
+    }
+
+    matched.forEach(choice => {
+      const row = document.createElement("div");
+      row.textContent = choice;
+      row.addEventListener("click", () => {
+        nodes.modelInput.value = choice;
+        const matchItem = nameModelMasterList.find(i => i.model && i.model.toLowerCase() === choice.toLowerCase());
+        if (matchItem) {
+          if (matchItem.name && nodes.nameInput && !nodes.nameInput.value) nodes.nameInput.value = matchItem.name;
+          if (matchItem.deviceType && nodes.deviceInput && !nodes.deviceInput.value) nodes.deviceInput.value = matchItem.deviceType;
+        }
+        modelDropdown.style.display = "none";
+      });
+      modelDropdown.appendChild(row);
+    });
+  }
+
+  if (nodes.nameInput) {
+    nodes.nameInput.addEventListener("focus", () => {
+      fillNameDropdownOptions(nodes.nameInput.value);
+      if (nameDropdown) nameDropdown.style.display = "block";
+    });
+    nodes.nameInput.addEventListener("input", (e) => {
+      fillNameDropdownOptions(e.target.value);
+      if (nameDropdown) nameDropdown.style.display = "block";
+    });
+  }
+
+  if (nodes.modelInput) {
+    nodes.modelInput.addEventListener("focus", () => {
+      fillModelDropdownOptions(nodes.modelInput.value);
+      if (modelDropdown) modelDropdown.style.display = "block";
+    });
+    nodes.modelInput.addEventListener("input", (e) => {
+      fillModelDropdownOptions(e.target.value);
+      if (modelDropdown) modelDropdown.style.display = "block";
+    });
+  }
+
+  // --- STOCK OUT SERIAL AUTO-FILL FIX ---
   function fillSerialDropdownOptions(filterText = "") {
     if (!nodes.serialDropdown || activeCategory === "Stock In / Received") {
       closeSerialMenu();
@@ -598,31 +757,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const selectedDevice = nodes.deviceInput ? nodes.deviceInput.value.trim().toLowerCase() : "";
-    let availableSerials = [];
+    let availableRecords = [];
     
     if (db["Stock In / Received"]) {
       db["Stock In / Received"].forEach((item) => {
         if (item && item.serial && !stockedOutSerials.has(item.serial)) {
           if (!selectedDevice || (item.device && item.device.trim().toLowerCase() === selectedDevice)) {
-            if (!availableSerials.includes(item.serial)) availableSerials.push(item.serial);
+            availableRecords.push(item);
           }
         }
       });
     }
 
-    if (selectedDevice) {
-      const targetCat = resolveTargetCategory(selectedDevice);
-      if (targetCat && db[targetCat]) {
-        db[targetCat].forEach((item) => {
-          if (item && item.serial && !stockedOutSerials.has(item.serial) && !availableSerials.includes(item.serial)) {
-            availableSerials.push(item.serial);
-          }
-        });
-      }
-    }
-
     const cleanFilter = filterText.toLowerCase().trim();
-    const matched = availableSerials.filter((serial) => serial.toLowerCase().includes(cleanFilter));
+    const matched = availableRecords.filter((rec) => rec.serial.toLowerCase().includes(cleanFilter));
 
     if (matched.length === 0) {
       const hint = document.createElement("div");
@@ -632,32 +780,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    matched.forEach((choice) => {
+    matched.forEach((rec) => {
       const row = document.createElement("div");
-      row.textContent = choice;
+      row.textContent = rec.serial;
       row.addEventListener("click", () => {
-        nodes.serialInput.value = choice;
+        nodes.serialInput.value = rec.serial;
+        if (nodes.deviceInput && (!nodes.deviceInput.value || nodes.deviceInput.value === "—")) {
+          nodes.deviceInput.value = rec.device || "";
+        }
+        if (nodes.nameInput) nodes.nameInput.value = rec.name !== "—" ? rec.name : "";
+        if (nodes.modelInput) nodes.modelInput.value = rec.model !== "—" ? rec.model : "";
         closeSerialMenu();
-
-        let foundRecord = null;
-        if (db["Stock In / Received"]) {
-          foundRecord = db["Stock In / Received"].find(item => item && item.serial === choice);
-        }
-
-        if (!foundRecord) {
-          for (const key of Object.keys(db)) {
-            if (Array.isArray(db[key])) {
-              const match = db[key].find(item => item && item.serial === choice);
-              if (match) { foundRecord = match; break; }
-            }
-          }
-        }
-
-        if (foundRecord) {
-          if (nodes.nameInput && foundRecord.name && foundRecord.name !== "—") nodes.nameInput.value = foundRecord.name;
-          if (nodes.modelInput && foundRecord.model && foundRecord.model !== "—") nodes.modelInput.value = foundRecord.model;
-          if (nodes.deviceInput && foundRecord.device && !nodes.deviceInput.value) nodes.deviceInput.value = foundRecord.device;
-        }
       });
       nodes.serialDropdown.appendChild(row);
     });
@@ -696,6 +829,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.addEventListener("click", (e) => {
     if (nodes.comboboxGroup && !nodes.comboboxGroup.contains(e.target)) closeComboboxMenu();
     if (nodes.comboboxSerial && !nodes.comboboxSerial.contains(e.target)) closeSerialMenu();
+    if (comboboxNameGroup && !comboboxNameGroup.contains(e.target) && nameDropdown) nameDropdown.style.display = "none";
+    if (comboboxModelGroup && !comboboxModelGroup.contains(e.target) && modelDropdown) modelDropdown.style.display = "none";
   });
 
   if (nodes.sidebarToggle) {
@@ -762,6 +897,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (category === "Summary") {
       nodes.globalActions.classList.add("hide-modifiers");
       if (nodes.triggerRecoverBtn) nodes.triggerRecoverBtn.style.display = "flex";
+      if (nodes.triggerListManagerBtn) nodes.triggerListManagerBtn.style.display = "flex";
 
       table.className = "data-table summary-table";
 
@@ -842,7 +978,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           const relVal = monthlyReleased[i];
           totalYearRec += recVal;
           totalYearRel += relVal;
-
           const relClass = i === 11 ? " border-right-dec" : "";
           rowHTML += `<td>${recVal > 0 ? recVal : "-"}</td><td class="${relClass}">${relVal > 0 ? relVal : "-"}</td>`;
         }
@@ -858,8 +993,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (item && item.device && item.device.trim().toLowerCase() === deviceName.toLowerCase() && item.date) {
               const parts = item.date.split("/");
               if (parts.length === 3) {
-                const itemYear = parseInt("20" + parts[2], 10);
-                if (itemYear < targetYearInt) prevStockCount++;
+                if (parseInt("20" + parts[2], 10) < targetYearInt) prevStockCount++;
               }
             }
           });
@@ -870,8 +1004,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (item && item.device && item.device.trim().toLowerCase() === deviceName.toLowerCase() && item.date) {
               const parts = item.date.split("/");
               if (parts.length === 3) {
-                const itemYear = parseInt("20" + parts[2], 10);
-                if (itemYear < targetYearInt) prevStockCount--;
+                if (parseInt("20" + parts[2], 10) < targetYearInt) prevStockCount--;
               }
             }
           });
@@ -921,6 +1054,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else {
       nodes.globalActions.classList.remove("hide-modifiers");
       if (nodes.triggerRecoverBtn) nodes.triggerRecoverBtn.style.display = "none";
+      if (nodes.triggerListManagerBtn) nodes.triggerListManagerBtn.style.display = "none";
 
       const addBtn = nodes.globalActions.querySelector(".action-add");
       if (addBtn) {
@@ -936,7 +1070,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       table.className = "data-table eleven-cols";
-
       let headers = [];
       const records = (db[category] || []).filter(item => item !== null && item !== undefined);
 
@@ -963,9 +1096,64 @@ document.addEventListener("DOMContentLoaded", async () => {
           const tr = document.createElement("tr");
           tr.setAttribute("data-row-index", index);
 
+          if (selectedIndex === index) {
+            tr.classList.add("selected-row");
+          }
           if (multiDeleteMode && multiSelectedIndices.has(index)) {
             tr.classList.add("multi-selected-row");
           }
+
+          tr.addEventListener("click", () => {
+            if (multiDeleteMode) {
+              if (multiSelectedIndices.has(index)) multiSelectedIndices.delete(index);
+              else multiSelectedIndices.add(index);
+              buildTableGrid(activeCategory);
+              return;
+            }
+
+            if (editMode) {
+              selectedIndex = index;
+              nodes.modalCategoryScope.textContent = activeCategory;
+              adaptFormLabelsAndFields(activeCategory);
+              nodes.formEditRowIndex.value = index;
+
+              document.getElementById("assetDate").value = item.date !== "—" ? item.date : "";
+              nodes.deviceInput.value = item.device !== "—" ? item.device : "";
+              if (nodes.nameInput) nodes.nameInput.value = item.name !== "—" ? item.name : "";
+              if (nodes.modelInput) nodes.modelInput.value = item.model !== "—" ? item.model : "";
+              if (nodes.serialInput) nodes.serialInput.value = item.serial !== "—" ? item.serial : "";
+              
+              const priceInput = document.getElementById("assetPrice");
+              if (priceInput) priceInput.value = item.price !== "—" ? item.price.replace(/[^\d.]/g, "") : "";
+
+              const deployedInput = document.getElementById("assetDeployed");
+              if (deployedInput) deployedInput.value = item.deployed || "";
+
+              const statusSelect = document.getElementById("assetStatus");
+              if (statusSelect) statusSelect.value = item.status || "Extra";
+
+              const othInput = document.getElementById("assetOth");
+              if (othInput) othInput.value = item.oth || "";
+
+              const erfInput = document.getElementById("assetErf");
+              if (erfInput) erfInput.value = item.erf || "";
+
+              const remarksEl = document.getElementById("assetRemarks");
+              if (remarksEl) remarksEl.value = item.remarks || "";
+
+              presentModal();
+              return;
+            }
+
+            if (activeCategory === "Cellphone") {
+              editingCellRowIndex = index;
+              document.getElementById("cellMacInput").value = item.macAddress || "";
+              document.getElementById("cellPhoneInput").value = item.phoneNumber || "";
+              document.getElementById("cellImeiInput").value = item.phoneImei1 || "";
+              document.getElementById("cellSapInput").value = item.sapFaAsset || "";
+              cellModalOverlay.classList.add("show");
+            }
+          });
 
           const columnsMap = [
             item.date || "—",
@@ -988,9 +1176,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (isStatusCol) {
               const select = document.createElement("select");
               const getStatusClass = (statusVal) => "status-badge status-" + (statusVal ? statusVal.toLowerCase().replace(/[\s/]+/g, '-') : 'extra');
-              
               select.className = "inline-status-select " + getStatusClass(val);
-              select.style.cssText = "background: transparent; border: none; outline: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.3px; appearance: none; -webkit-appearance: none; padding-right: 16px; background-image: url(\"data:image/svg+xml;utf8,<svg fill='%238592a6' height='10' viewBox='0 0 24 24' width='10' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>\"); background-repeat: no-repeat; background-position: right center; width: 100%; text-align: center;";
+              select.style.cssText = "background: transparent; border: none; outline: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; width: 100%; text-align: center;";
               
               statusOptions.forEach(opt => {
                 const option = document.createElement("option");
@@ -1010,8 +1197,6 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
                 select.className = "inline-status-select " + getStatusClass(newStatus);
               });
-
-              select.addEventListener("click", (e) => { e.stopPropagation(); });
               td.appendChild(select);
             } else if (isRemarksCol) {
               td.style.position = "relative";
@@ -1021,199 +1206,48 @@ document.addEventListener("DOMContentLoaded", async () => {
               remarksWrapper.style.cssText = "display: flex; align-items: center; gap: 6px; width: 100%;";
 
               const textarea = document.createElement("textarea");
-              const previewText = val || "";
-
-              textarea.title = previewText;
-              textarea.value = previewText;
-              textarea.style.cssText = "background: transparent; border: none; outline: none; color: #cbd5e1; width: 100%; text-align: left; font-size: 0.82rem; font-weight: 500; resize: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; height: 18px; line-height: 18px; vertical-align: middle; cursor: text;";
+              textarea.value = val || "";
+              textarea.style.cssText = "background: transparent; border: none; outline: none; color: #cbd5e1; width: 100%; text-align: left; font-size: 0.82rem; height: 18px; cursor: text;";
 
               textarea.addEventListener("focus", () => {
                 const cellRect = td.getBoundingClientRect();
                 const currentItem = db[activeCategory][index] || {};
-                let fullVal = currentItem.remarks || "";
-                textarea.value = fullVal;
-                
+                textarea.value = currentItem.remarks || "";
                 textarea.style.position = "fixed";
                 textarea.style.zIndex = "999999";
                 textarea.style.background = "#0f1322";
                 textarea.style.border = "1px solid var(--accent-cyan, #00e5ff)";
                 textarea.style.borderRadius = "6px";
                 textarea.style.padding = "6px 8px";
-                textarea.style.boxShadow = "0 20px 50px rgba(0,0,0,0.95), 0 0 15px rgba(0, 229, 255, 0.2)";
                 textarea.style.width = "365px";
-                textarea.style.whiteSpace = "pre-wrap";
-                textarea.style.textAlign = "left";
-                
-                const horizontalOffset = 3; 
-                const verticalOffset = 5;
-                const fieldWidth = 365;
-
-                let leftPos = cellRect.left + horizontalOffset;
-                if (leftPos + fieldWidth > window.innerWidth - 20) {
-                  leftPos = cellRect.right - fieldWidth - horizontalOffset;
-                }
-
-                textarea.style.left = leftPos + "px";
-                textarea.style.top = (cellRect.top + verticalOffset) + "px";
-                textarea.style.right = "auto";
-                
-                textarea.style.height = "18px";
-                if (textarea.value.includes("\n")) {
-                  textarea.style.height = (textarea.scrollHeight + 4) + "px";
-                }
+                textarea.style.left = (cellRect.left + 3) + "px";
+                textarea.style.top = (cellRect.top + 5) + "px";
               });
 
               textarea.addEventListener("blur", async () => {
                 textarea.style.position = "static";
-                textarea.style.zIndex = "auto";
-                textarea.style.background = "transparent";
                 textarea.style.border = "none";
-                textarea.style.padding = "0";
-                textarea.style.boxShadow = "none";
                 textarea.style.width = "100%";
-                textarea.style.minHeight = "18px";
-                textarea.style.height = "18px";
-                textarea.style.whiteSpace = "nowrap";
-                textarea.style.textAlign = "left";
-                textarea.style.left = "auto";
-                textarea.style.top = "auto";
-                
-                if (db[activeCategory][index]) {
-                  await saveRecordToTable(activeCategory, db[activeCategory][index]);
-                }
+                if (db[activeCategory][index]) await saveRecordToTable(activeCategory, db[activeCategory][index]);
                 buildTableGrid(activeCategory);
               });
 
-              textarea.addEventListener("keydown", (e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  textarea.blur();
-                }
-              });
-
               textarea.addEventListener("input", (e) => {
-                const fullText = e.target.value;
-                textarea.title = fullText;
-                if (db[activeCategory][index]) {
-                  db[activeCategory][index].remarks = fullText;
-                }
-                
-                if (fullText.includes("\n")) {
-                  textarea.style.height = "auto";
-                  textarea.style.height = (textarea.scrollHeight + 4) + "px";
-                } else {
-                  textarea.style.height = "18px";
-                }
+                if (db[activeCategory][index]) db[activeCategory][index].remarks = e.target.value;
               });
 
-              textarea.addEventListener("click", (e) => { e.stopPropagation(); });
               remarksWrapper.appendChild(textarea);
-
-              if (activeCategory === "Cellphone") {
-                const noteBtn = document.createElement("button");
-                noteBtn.type = "button";
-                noteBtn.innerHTML = "🏷️";
-                noteBtn.style.cssText = "background: var(--bg-hover, #1e2548); border: 1px solid var(--border-color, #232c4d); color: var(--text-main); border-radius: 4px; padding: 2px 6px; font-size: 0.75rem; cursor: pointer; flex-shrink: 0;";
-                
-                noteBtn.addEventListener("mouseenter", (e) => {
-                  const currentItem = db["Cellphone"][index] || {};
-                  const rows = [];
-                  
-                  if (currentItem.macAddress) rows.push(`<div class="hover-row"><span class="hover-label">MAC:</span><span class="hover-val">${currentItem.macAddress}</span></div>`);
-                  if (currentItem.phoneNumber) rows.push(`<div class="hover-row"><span class="hover-label">PHONE:</span><span class="hover-val">${currentItem.phoneNumber}</span></div>`);
-                  if (currentItem.phoneImei1) rows.push(`<div class="hover-row"><span class="hover-label">IMEI 1:</span><span class="hover-val">${currentItem.phoneImei1}</span></div>`);
-                  if (currentItem.sapFaAsset) rows.push(`<div class="hover-row"><span class="hover-label">SAP FA:</span><span class="hover-val">${currentItem.sapFaAsset}</span></div>`);
-
-                  if (rows.length > 0) {
-                    cellHoverCard.innerHTML = `<div class="hover-title">CELLPHONE DETAILS</div><div class="hover-content">${rows.join('')}</div>`;
-                    cellHoverCard.style.display = "block";
-                    const cardWidth = cellHoverCard.offsetWidth || 180;
-                    cellHoverCard.style.left = (e.clientX - cardWidth - 12) + "px";
-                    cellHoverCard.style.top = (e.clientY + 6) + "px";
-                  }
-                });
-
-                noteBtn.addEventListener("mouseleave", () => { cellHoverCard.style.display = "none"; });
-
-                noteBtn.addEventListener("click", (e) => {
-                  e.stopPropagation();
-                  cellHoverCard.style.display = "none";
-                  editingCellRowIndex = index;
-                  const currentItem = db["Cellphone"][index] || {};
-                  document.getElementById("cellMacInput").value = currentItem.macAddress || "";
-                  document.getElementById("cellPhoneInput").value = currentItem.phoneNumber || "";
-                  document.getElementById("cellImeiInput").value = currentItem.phoneImei1 || "";
-                  document.getElementById("cellSapInput").value = currentItem.sapFaAsset || "";
-                  cellModalOverlay.classList.add("show");
-                });
-
-                remarksWrapper.appendChild(noteBtn);
-              }
-
               td.appendChild(remarksWrapper);
             } else {
               td.innerHTML = val === "" ? "&nbsp;" : val;
             }
             tr.appendChild(td);
           });
-
-          tr.addEventListener("click", function () {
-            const idx = parseInt(this.getAttribute("data-row-index"));
-            
-            if (editMode) {
-              selectedIndex = idx;
-              const record = db[activeCategory][selectedIndex];
-              if (record) {
-                nodes.modalCategoryScope.textContent = activeCategory;
-                nodes.formEditRowIndex.value = selectedIndex;
-                adaptFormLabelsAndFields(activeCategory);
-                
-                document.getElementById("assetDate").value = record.date !== "—" ? convertToInputDate(record.date.split(" | ")[0]) : "";
-                nodes.deviceInput.value = record.device;
-                document.getElementById("assetName").value = record.name;
-                document.getElementById("assetModel").value = record.model;
-                document.getElementById("assetSerial").value = record.serial;
-                
-                const priceInput = document.getElementById("assetPrice");
-                if (priceInput) {
-                  const rawPrice = record.price && record.price !== "—" ? record.price.replace(/[^\d.]/g, "") : "";
-                  priceInput.value = rawPrice;
-                }
-
-                document.getElementById("assetUnits").value = 1;
-                document.getElementById("assetDeployed").value = record.deployed || "";
-                document.getElementById("assetStatus").value = record.status || "Extra";
-                document.getElementById("assetOth").value = record.oth || "";
-                document.getElementById("assetErf").value = record.erf || "";
-                
-                const remarksEl = document.getElementById("assetRemarks");
-                if (remarksEl) remarksEl.value = record.remarks || "";
-                
-                presentModal();
-              }
-              return;
-            }
-
-            if (multiDeleteMode) {
-              if (multiSelectedIndices.has(idx)) {
-                multiSelectedIndices.delete(idx);
-                this.classList.remove("multi-selected-row");
-              } else {
-                multiSelectedIndices.add(idx);
-                this.classList.add("multi-selected-row");
-              }
-            } else {
-              tbody.querySelectorAll("tr").forEach((r) => r.classList.remove("selected-row"));
-              this.classList.add("selected-row");
-              selectedIndex = idx;
-            }
-          });
           tbody.appendChild(tr);
         });
       }
       table.appendChild(tbody);
     }
-
     container.appendChild(table);
     nodes.contentView.appendChild(container);
   }
@@ -1254,7 +1288,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         nodes.openEditModalBtn.classList.add("active-edit-mode");
         multiDeleteMode = false;
         multiSelectedIndices.clear();
-        if (nodes.triggerDeleteBtn) nodes.triggerDeleteBtn.classList.remove("active-delete-mode");
       } else {
         nodes.openEditModalBtn.classList.remove("active-edit-mode");
       }
@@ -1272,27 +1305,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         buildTableGrid(activeCategory);
         return;
       }
-
       if (multiSelectedIndices.size === 0 && selectedIndex === null) {
         multiDeleteMode = false;
         nodes.triggerDeleteBtn.classList.remove("active-delete-mode");
         buildTableGrid(activeCategory);
         return;
       }
-
       showConfirmModal("Are you sure you want to Permanently Delete this Item?", async () => {
         let indicesToDelete = Array.from(multiSelectedIndices).sort((a, b) => b - a);
-        if (indicesToDelete.length === 0 && selectedIndex !== null) {
-          indicesToDelete = [parseInt(selectedIndex)];
-        }
+        if (indicesToDelete.length === 0 && selectedIndex !== null) indicesToDelete = [parseInt(selectedIndex)];
 
         for (const idx of indicesToDelete) {
           const deletedItem = db[activeCategory][idx];
-          if (deletedItem && deletedItem.serial) {
-            await deleteRecordFromTable(activeCategory, deletedItem.serial);
-          }
+          if (deletedItem && deletedItem.serial) await deleteRecordFromTable(activeCategory, deletedItem.serial);
         }
-
         multiDeleteMode = false;
         multiSelectedIndices.clear();
         nodes.triggerDeleteBtn.classList.remove("active-delete-mode");
@@ -1308,7 +1334,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         alert("No backup snapshot from yesterday was found yet.");
         return;
       }
-
       showConfirmModal("Are you sure you want to Restore Yesterday's Inventory?", () => {
         localStorage.setItem("plaspack_inventory_db", yesterdayBackup);
         db = JSON.parse(yesterdayBackup);
@@ -1333,7 +1358,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const unitsCount = parseInt(document.getElementById("assetUnits").value) || 1;
     const targetIndex = nodes.formEditRowIndex.value;
     const chosenStatus = activeCategory === "Stock In / Received" ? "" : document.getElementById("assetStatus").value;
-    
     const rawPriceInput = document.getElementById("assetPrice") ? document.getElementById("assetPrice").value.trim() : "";
     const formattedPrice = rawPriceInput ? formatPeso(rawPriceInput) : "—";
 
@@ -1351,27 +1375,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       if (nodes.serialInput) nodes.serialInput.style.borderColor = "#ff4b4b";
       return;
-    }
-
-    if (activeCategory === "Stock Out / Released" && targetIndex === "") {
-      let serialExists = false;
-      const targetCat = resolveTargetCategory(inputDeviceType);
-
-      if (db["Stock In / Received"]) {
-        serialExists = db["Stock In / Received"].some((item) => item && item.serial === serialNum);
-      }
-      if (!serialExists && targetCat && db[targetCat]) {
-        serialExists = db[targetCat].some((item) => item && item.serial === serialNum);
-      }
-
-      if (!serialExists) {
-        if (nodes.formErrorAlert) {
-          nodes.formErrorAlert.textContent = `Error: Serial number "${serialNum}" does not exist in stock! You cannot stock out an item that has not been received.`;
-          nodes.formErrorAlert.style.display = "block";
-        }
-        if (nodes.serialInput) nodes.serialInput.style.borderColor = "#ff4b4b";
-        return;
-      }
     }
 
     if (nodes.formErrorAlert) nodes.formErrorAlert.style.display = "none";
@@ -1395,10 +1398,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         oth: activeCategory !== "Stock In / Received" ? document.getElementById("assetOth").value.trim() || "—" : "",
         erf: activeCategory !== "Stock In / Received" ? (document.getElementById("assetErf").value.trim() || "—") : "",
         remarks: remarksVal,
-        macAddress: existingRecord.macAddress || "",
-        phoneNumber: existingRecord.phoneNumber || "",
-        phoneImei1: existingRecord.phoneImei1 || "",
-        sapFaAsset: existingRecord.sapFaAsset || ""
       };
       db[activeCategory][targetIndex] = formattedRow;
       await saveRecordToTable(activeCategory, formattedRow);
@@ -1416,58 +1415,25 @@ document.addEventListener("DOMContentLoaded", async () => {
           oth: "",
           erf: "",
           remarks: remarksVal,
-          macAddress: "",
-          phoneNumber: "",
-          phoneImei1: "",
-          sapFaAsset: ""
         };
 
         if (activeCategory === "Stock Out / Released") {
           formattedRow.deployed = document.getElementById("assetDeployed").value.trim() || "—";
           formattedRow.status = chosenStatus;
-          formattedRow.oth = document.getElementById("assetOth").value.trim() || "—";
-          formattedRow.erf = document.getElementById("assetErf").value.trim() === "" ? "—" : document.getElementById("assetErf").value.trim();
-
           db["Stock Out / Released"].push(formattedRow);
           await saveRecordToTable("Stock Out / Released", formattedRow);
-
-          const targetCat = resolveTargetCategory(inputDeviceType);
-          if (targetCat && db[targetCat]) {
-            const matchedItem = db[targetCat].find((item) => item && item.serial === formattedRow.serial);
-            if (matchedItem) {
-              matchedItem.date = matchedItem.date.includes("|") ? matchedItem.date : matchedItem.date + " | " + formattedShortDate;
-              matchedItem.deployed = formattedRow.deployed;
-              matchedItem.status = chosenStatus;
-              matchedItem.oth = formattedRow.oth;
-              matchedItem.erf = formattedRow.erf;
-              matchedItem.remarks = formattedRow.remarks;
-              if (rawPriceInput) matchedItem.price = formattedPrice;
-              await saveRecordToTable(targetCat, matchedItem);
-            }
-          }
         } else if (activeCategory === "Stock In / Received") {
           if (!db["Stock In / Received"]) db["Stock In / Received"] = [];
-          
-          const stockInItem = { ...formattedRow };
-          db["Stock In / Received"].push(stockInItem);
-          await saveRecordToTable("Stock In / Received", stockInItem);
+          db["Stock In / Received"].push(formattedRow);
+          await saveRecordToTable("Stock In / Received", formattedRow);
 
-          const exactCategory = inputDeviceType; 
           const targetGroup = resolveTargetCategory(inputDeviceType);
-
-          const categoriesToUpdate = [exactCategory];
-          if (targetGroup && targetGroup !== exactCategory) {
-            categoriesToUpdate.push(targetGroup);
-          }
+          const categoriesToUpdate = [inputDeviceType];
+          if (targetGroup && targetGroup !== inputDeviceType) categoriesToUpdate.push(targetGroup);
 
           for (const catName of categoriesToUpdate) {
             if (!db[catName]) db[catName] = [];
-            const categoryCopyRow = { 
-              ...formattedRow, 
-              device: inputDeviceType, 
-              status: "Extra", 
-              supabaseId: null 
-            };
+            const categoryCopyRow = { ...formattedRow, device: inputDeviceType, status: "Extra", supabaseId: null };
             db[catName].push(categoryCopyRow);
             await saveRecordToTable(catName, categoryCopyRow);
           }
@@ -1478,26 +1444,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
     }
-
     dismissModal();
     buildTableGrid(activeCategory);
   }
 
   if (nodes.addItemForm) {
-    nodes.addItemForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      handleSaveAsset();
-    }); 
+    nodes.addItemForm.addEventListener("submit", (e) => { e.preventDefault(); handleSaveAsset(); });
   }
-
   if (nodes.saveAssetBtn) {
-    nodes.saveAssetBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      handleSaveAsset();
-    });
+    nodes.saveAssetBtn.addEventListener("click", (e) => { e.preventDefault(); handleSaveAsset(); });
   }
 
-  // --- INITIALIZE LOAD AND REALTIME SYNC ---
+  await loadNameModelsFromSupabase();
   await loadDatabaseFromSupabase();
   subscribeToRealtimeSync();
 });
