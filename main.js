@@ -366,7 +366,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const devicesList = [
     "Access Points", "Air Gun", "Bags", "Biometrics", "Cabinet",
-    "Cable Jack", "CCTV Camera", "CCTV DVR", "CCTV Power Supply", "Cellphone",
+    "Cable Jack", "CCTV Camera", "CCTV DVR", "CCTV NVR", "CCTV Power Supply", "Cellphone",
     "Charger", "Charging Cord", "Connector", "Crimper", "Desktop",
     "Digital Multimeter", "Enclosure", "External HDD", "Firewall", "GPON ONU",
     "HDD", "HDMI Cable", "Hub", "I/O", "Ink", "Internal HDD", "IP Camera",
