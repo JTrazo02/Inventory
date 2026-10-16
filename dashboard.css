@@ -263,6 +263,12 @@ body {
   border-color: #00e5ff;
   background-color: rgba(0, 229, 255, 0.15);
 }
+.action-btn.action-manager:hover,
+.action-btn.active-manager-mode {
+  color: #00bcd4;
+  border-color: #00bcd4;
+  background-color: rgba(0, 188, 212, 0.15);
+}
 
 .action-buttons.hide-modifiers .action-add,
 .action-buttons.hide-modifiers .action-edit,
@@ -382,7 +388,6 @@ body {
   border-left: none !important;
 }
 
-/* --- DECEMBER BORDER FIX --- */
 .data-table.summary-table .border-right-dec {
   border-right: 1px solid var(--accent-cyan) !important;
 }
@@ -400,14 +405,6 @@ body {
 .data-table.summary-table th.border-right-today,
 .data-table.summary-table td.border-right-today {
   border-right: none !important;
-}
-
-.data-table.summary-table tr:first-child th {
-  border-top: none !important;
-}
-
-.data-table.summary-table tr:last-child td {
-  border-bottom: none !important;
 }
 
 /* Standard Table Headers & Cells for Other Categories */
@@ -437,18 +434,6 @@ body {
   box-sizing: border-box;
 }
 
-.data-table.eleven-cols td {
-  text-align: center;
-}
-
-.data-table th,
-.data-table td {
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-/* --- COLUMN METRICS RULE --- */
 .data-table.eleven-cols th:nth-child(1),
 .data-table.eleven-cols td:nth-child(1) { width: 9%; }
 .data-table.eleven-cols th:nth-child(2),
@@ -468,7 +453,6 @@ body {
 .data-table.eleven-cols th:nth-child(9),
 .data-table.eleven-cols td:nth-child(9) { width: 5%; }
 
-/* --- REMARKS COLUMN & EXPANDING EDITOR STYLES --- */
 .data-table.eleven-cols th:nth-child(10),
 .data-table.eleven-cols td:nth-child(10) {
   width: 23%;
@@ -496,7 +480,6 @@ body {
   transition: border-color 0.15s ease;
 }
 
-/* Floating expansion when focused */
 .data-table.eleven-cols td:nth-child(10) textarea:focus {
   position: fixed !important;
   z-index: 999999 !important;
@@ -513,7 +496,6 @@ body {
   overflow-y: hidden !important;
 }
 
-/* Interactive Selection Highlights Feedback */
 .data-table tbody tr {
   cursor: pointer;
   height: 38px;
@@ -523,49 +505,64 @@ body {
 }
 .data-table tbody tr.selected-row {
   background-color: #16243a !important;
-  border-top: 1px solid var(--border-color) !important;
-  border-right: 1px solid var(--border-color) !important;
-  border-bottom: 1px solid var(--border-color) !important;
-  outline: none !important;
+  border: 1px solid var(--border-color) !important;
 }
 .data-table tbody tr.multi-selected-row {
   background-color: rgba(255, 74, 74, 0.2) !important;
-  border-top: 1px solid var(--border-color) !important;
-  border-right: 1px solid var(--border-color) !important;
-  border-bottom: 1px solid var(--border-color) !important;
-  outline: none !important;
+  border: 1px solid var(--border-color) !important;
 }
 
-/* Compact Status Badge Configurations */
-.status-badge {
-  display: inline;
-  padding: 0;
-  border: none;
-  background: transparent;
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.3px;
+/* --- STATUS GLOWING BADGES --- */
+.inline-status-select {
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-family: inherit;
+  transition: all 0.2s ease;
 }
-.status-extra, .status-badge.extra-stock {
-  color: #d6b4ff;
-  text-shadow: 0 0 8px rgba(157, 78, 221, 0.8), 0 0 15px rgba(157, 78, 221, 0.5);
+
+.status-badge.status-in-service {
+  color: #00e5ff;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+  background-color: rgba(0, 229, 255, 0.1);
+  border: 1px solid rgba(0, 229, 255, 0.3) !important;
 }
-.status-in-service, .status-badge.in-stock {
-  color: #a8ffb2;
-  text-shadow: 0 0 8px rgba(40, 167, 69, 0.8), 0 0 15px rgba(40, 167, 69, 0.5);
+
+.status-badge.status-extra {
+  color: #10b981;
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
 }
-.status-under-repair, .status-badge.low-stock {
-  color: #ffd180;
-  text-shadow: 0 0 8px rgba(255, 152, 0, 0.8), 0 0 15px rgba(255, 152, 0, 0.5);
+
+.status-badge.status-defective,
+.status-badge.status-damaged {
+  color: #ef4444;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
 }
-.status-awol, .status-damaged, .status-defective, .status-disposed,
-.status-lost---stolen, .status-lost-stolen, .status-non-operational,
-.status-out-of-service, .status-reassigned, .status-sold, .status-standby {
-  color: #9e9e9e;
-  background-color: transparent;
-  border: none;
-  box-shadow: none;
-  text-shadow: none;
+
+.status-badge.status-under-repair {
+  color: #f59e0b;
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+  background-color: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
+}
+
+.status-badge.status-awol,
+.status-badge.status-lost-stolen {
+  color: #a855f7;
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+  background-color: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.3) !important;
+}
+
+.status-badge.status-disposed,
+.status-badge.status-sold,
+.status-badge.status-out-of-service {
+  color: #94a3b8;
+  background-color: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.3) !important;
 }
 
 /* --- MODAL DIALOG CONTAINER --- */
@@ -804,7 +801,6 @@ body {
   font-style: italic;
   cursor: default;
 }
-/* Active state styling for Edit and Delete action buttons */
 .action-btn.active-edit-mode,
 .action-btn.active-delete-mode {
   background-color: var(--accent-cyan, #00e5ff) !important;
@@ -812,152 +808,70 @@ body {
   border-color: var(--accent-cyan, #00e5ff) !important;
   box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
 }
-/* Completely remove background and style number input spinners */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none !important;
   appearance: none !important;
   background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
 }
-
 input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
-/* --- FIXED CELLPHONE DETAILS MODAL & FORM LAYOUT --- */
-.modal-wide-bar.horizontal-layout {
-  max-width: 95%;
-  width: auto;
-  min-width: 850px;
-}
 
-.modal-wide-bar.horizontal-layout .modal-bar-header {
+/* --- EMBEDDED TEXTAREA INDEPENDENT LINE NUMBER GUTTER --- */
+.editor-column-box {
   position: relative;
   display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 10px;
-  margin-bottom: 20px;
+  background: #121626;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  height: 230px;
+  overflow: hidden;
 }
 
-.modal-wide-bar.horizontal-layout .modal-bar-header h2 {
-  text-align: left;
-  font-size: 1rem;
-  color: var(--accent-cyan);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin: 0;
+.editor-column-box:focus-within {
+  border-color: var(--accent-cyan);
 }
 
-.modal-wide-bar.horizontal-layout .modal-bar-header .close-bar-btn {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+.editor-column-box .gutter {
+  width: 32px;
+  background: #0b0e19;
+  color: #4b5563;
+  font-family: monospace;
+  font-size: 0.78rem;
+  line-height: 20px;
+  text-align: right;
+  padding: 6px 6px 6px 0;
+  user-select: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  white-space: pre;
+  flex-shrink: 0;
+}
+
+.editor-column-box textarea {
+  flex: 1;
+  height: 100%;
   background: transparent;
-  color: var(--text-muted);
   border: none;
-  font-size: 1.3rem;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
+  outline: none;
+  color: #fff;
+  padding: 6px 8px;
+  font-family: monospace;
+  font-size: 0.78rem;
+  line-height: 20px;
+  resize: none;
+  white-space: pre;
+  overflow-x: auto;
+  overflow-y: auto;
 }
 
-.modal-wide-bar.horizontal-layout .modal-bar-header .close-bar-btn:hover {
-  background: transparent;
-  color: var(--text-main);
+.editor-column-box textarea::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
 }
-
-.modal-wide-bar.horizontal-layout #cellDetailsForm .form-horizontal-layout,
-.form-horizontal-layout {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: flex-end !important;
-  gap: 15px !important;
-  width: 100% !important;
-}
-
-.form-horizontal-layout .form-group {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 6px !important;
-  flex: 1 !important;
-}
-
-.form-horizontal-layout .form-group label {
-  text-align: left !important;
-  font-size: 0.72rem !important;
-  font-weight: 600 !important;
-  color: var(--text-muted) !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
-  white-space: nowrap !important;
-}
-
-.form-horizontal-layout .form-group input {
-  background: var(--bg-dark) !important;
-  border: 1px solid var(--border-color) !important;
-  color: var(--text-main) !important;
-  padding: 8px 12px !important;
-  border-radius: 6px !important;
-  font-size: 0.85rem !important;
-  outline: none !important;
-  width: 100% !important;
-}
-#cellHoverCard {
-  position: fixed;
-  display: none;
-  z-index: 999999;
-  background: #0f1322;
-  border: 1px solid var(--accent-cyan, #00e5ff);
-  border-radius: 6px;
-  padding: 4px 6px !important;
-  width: max-content;
-  max-width: 320px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 10px rgba(0, 229, 255, 0.2);
-  pointer-events: none;
-  font-size: 0.76rem;
-  color: #f8fafc;
-  line-height: 1.15;
-  text-transform: uppercase;
-}
-
-#cellHoverCard .hover-title {
-  font-weight: 700;
-  color: var(--accent-cyan);
-  margin: 0 !important;
-  padding: 0 0 3px 0 !important;
-  border-bottom: 1px solid var(--border-color, #232c4d);
-  line-height: 1;
-}
-
-#cellHoverCard .hover-content {
-  margin-top: 3px !important;
-  display: flex;
-  flex-direction: column;
-  gap: 1px !important;
-}
-
-/* Align labels and values cleanly using CSS Grid */
-#cellHoverCard .hover-row {
-  display: grid;
-  grid-template-columns: 50px auto;
-  gap: 6px;
-  margin: 0 !important;
-  padding: 0 !important;
-  line-height: 1.2;
-}
-
-#cellHoverCard .hover-label {
-  color: var(--text-muted, #8592a6);
-  text-align: left;
-}
-
-#cellHoverCard .hover-val {
-  color: #f8fafc;
-  word-break: break-all;
+.editor-column-box textarea::-webkit-scrollbar-thumb {
+  background: #1f2a47;
+  border-radius: 3px;
 }
