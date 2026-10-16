@@ -446,17 +446,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function deleteRecordFromTable(category, serialNumber) {
-    const tableName = getTableName(category);
     if (!serialNumber || serialNumber === "—") return;
 
-    const query = _supabase.from(tableName).delete();
-    if (tableName === "inventory_items") {
-      await query.eq("serial_number", serialNumber).eq("category_group", category);
+    if (category === "Stock In / Received") {
+      // 1. Delete from stock_in table
+      await _supabase.from("stock_in").delete().eq("serial_number", serialNumber);
+
+      // 2. Automatically delete the matching serial from inventory_items across all categories
+      await _supabase.from("inventory_items").delete().eq("serial_number", serialNumber);
     } else {
-      await query.eq("serial_number", serialNumber);
+      const tableName = getTableName(category);
+      const query = _supabase.from(tableName).delete();
+      if (tableName === "inventory_items") {
+        await query.eq("serial_number", serialNumber).eq("category_group", category);
+      } else {
+        await query.eq("serial_number", serialNumber);
+      }
     }
   }
-
   function subscribeToRealtimeSync() {
     _supabase
       .channel("public:all_inventory")
