@@ -335,7 +335,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else {
       base = {
         category_group: category,
-        date_in_out: item.date && item.date !== "—" ? item.date : null,
         date_received: item.date && item.date !== "—" ? item.date : null,
         device_type: item.device && item.device !== "—" ? item.device : null,
         name: item.name && item.name !== "—" ? item.name : null,
