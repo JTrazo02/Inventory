@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="en">
   <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PIC Inventory Dashboard</title>
-  <link rel="stylesheet" href="dashboard.css" />
-  <!-- Include Supabase Client Library -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIC Inventory Dashboard</title>
+    <link rel="stylesheet" href="dashboard.css" />
+    <!-- Include Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
   <body>
     <!-- SIDEBAR NAVIGATION -->
     <aside class="sidebar" id="sidebar">
@@ -155,12 +155,13 @@
           </div>
         </div>
         <div class="action-buttons" id="globalActions">
-  <button class="action-btn action-recover" id="triggerRecoverBtn" title="Recover">🔄</button>
-  <button class="action-btn action-add" id="openAddModalBtn" title="Add Record">+</button>
-  <button class="action-btn action-edit" id="openEditModalBtn" title="Edit Record">✎</button>
-  <button class="action-btn action-del" id="triggerDeleteBtn" title="Delete Record">🗑</button>
-  <button class="action-btn action-logout" id="logoutBtn" title="Logout">⏻</button>
-</div>
+          <button class="action-btn action-recover" id="triggerRecoverBtn" title="Recover">🔄</button>
+          <button class="action-btn action-manager" id="triggerListManagerBtn" title="Manage Device Type, Name & Model List" style="display: none;">📋</button>
+          <button class="action-btn action-add" id="openAddModalBtn" title="Add Record">+</button>
+          <button class="action-btn action-edit" id="openEditModalBtn" title="Edit Record">✎</button>
+          <button class="action-btn action-del" id="triggerDeleteBtn" title="Delete Record">🗑</button>
+          <button class="action-btn action-logout" id="logoutBtn" title="Logout">⏻</button>
+        </div>
       </header>
 
       <section class="content-view" id="contentView">
@@ -202,18 +203,26 @@
               </div>
 
               <!-- Name Field -->
-              <div class="bar-input-group" id="groupName">
+              <div class="bar-input-group searchable-combobox" id="groupName">
                 <label for="assetName">Name</label>
-                <input type="text" id="assetName" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+                <div class="combobox-wrapper">
+                  <input type="text" id="assetName" role="combobox" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+                  <span class="combobox-arrow">&#9660;</span>
+                </div>
+                <div class="combobox-dropdown" id="nameDropdownOptions"></div>
               </div>
 
               <!-- Model Field -->
-              <div class="bar-input-group" id="groupModel">
+              <div class="bar-input-group searchable-combobox" id="groupModel">
                 <label for="assetModel">Model</label>
-                <input type="text" id="assetModel" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+                <div class="combobox-wrapper">
+                  <input type="text" id="assetModel" role="combobox" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+                  <span class="combobox-arrow">&#9660;</span>
+                </div>
+                <div class="combobox-dropdown" id="modelDropdownOptions"></div>
               </div>
 
-              <!-- Serial Number Field (Dynamically toggles arrow via JS) -->
+              <!-- Serial Number Field -->
               <div class="bar-input-group" id="groupSerial">
                 <label for="assetSerial" id="lblSerial">Serial #</label>
                 <div class="combobox-wrapper" id="serialWrapper">
@@ -221,9 +230,10 @@
                 </div>
                 <div class="combobox-dropdown" id="serialDropdownOptions"></div>
               </div>
+              
               <div class="bar-input-group" id="groupPrice">
                 <label for="assetPrice">Price</label>
-                  <input type="text" id="assetPrice" placeholder="">
+                <input type="text" id="assetPrice" placeholder="">
               </div>
 
               <!-- Units / Quantity -->
@@ -274,22 +284,72 @@
         </div>
       </div>
     </div>
-<!-- Custom Confirmation Modal -->
-<div class="modal-overlay" id="confirmModal">
-  <div class="modal-wide-bar" style="max-width: 420px;">
-    <div class="modal-bar-header">
-      <h2>Confirmation</h2>
-      <span class="close-bar-btn" id="closeConfirmBtn">&times;</span>
+
+    <!-- NAME & MODEL MASTER LIST MANAGER MODAL -->
+    <div class="modal-overlay" id="nameModelManagerModal">
+      <div class="modal-wide-bar" style="width: 860px; max-width: 95%;">
+        <div class="modal-bar-header">
+          <h2>Master's List</h2>
+          <span class="close-bar-btn" id="closeManagerModalBtn">&times;</span>
+        </div>
+
+        <!-- 3-Column Bulk Paste Section with Individual Protected Line Numbers -->
+        <div style="margin-bottom: 16px; background: #0b0f1a; border: 1px solid var(--border-color); border-radius: 6px; padding: 12px;">
+          <label style="display: block; font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600; margin-bottom: -5px; text-transform: uppercase;">
+          </label>
+          
+          <div style="display: flex; gap: 12px; margin-bottom: 4px;">
+            <!-- Device Type Column -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: 600;">DEVICE TYPE COLUMN</span>
+              <div class="editor-column-box">
+                <div class="gutter" id="deviceGutter">1</div>
+                <textarea id="bulkDeviceTextarea" placeholder="" wrap="off"></textarea>
+              </div>
+            </div>
+
+            <!-- Name Column -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: 600;">NAME COLUMN</span>
+              <div class="editor-column-box">
+                <div class="gutter" id="nameGutter">1</div>
+                <textarea id="bulkNameTextarea" placeholder="" wrap="off"></textarea>
+              </div>
+            </div>
+
+            <!-- Model Column -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: 600;">MODEL COLUMN</span>
+              <div class="editor-column-box">
+                <div class="gutter" id="modelGutter">1</div>
+                <textarea id="bulkModelTextarea" placeholder="" wrap="off"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="center-bottom-actions-bar" style="margin-top: 16px;">
+          <button type="button" class="save-bar-btn" id="managerCloseBtn" style="width: 100%;">Done</button>
+        </div>
+      </div>
     </div>
-    <p id="confirmMessage" style="color: #cbd5e1; font-size: 0.88rem; margin-bottom: 20px; line-height: 1.4;">
-      Are you sure you want to Restore Yesterday's Inventory?
-    </p>
-    <div class="center-bottom-actions-bar">
-      <button type="button" class="cancel-bar-btn" id="cancelConfirmBtn">Cancel</button>
-      <button type="button" class="save-bar-btn" id="okConfirmBtn">Confirm</button>
+
+    <!-- Custom Confirmation Modal -->
+    <div class="modal-overlay" id="confirmModal">
+      <div class="modal-wide-bar" style="max-width: 420px;">
+        <div class="modal-bar-header">
+          <h2>Confirmation</h2>
+          <span class="close-bar-btn" id="closeConfirmBtn">&times;</span>
+        </div>
+        <p id="confirmMessage" style="color: #cbd5e1; font-size: 0.88rem; margin-bottom: 20px; line-height: 1.4;">
+          Are you sure you want to Restore Yesterday's Inventory?
+        </p>
+        <div class="center-bottom-actions-bar">
+          <button type="button" class="cancel-bar-btn" id="cancelConfirmBtn">Cancel</button>
+          <button type="button" class="save-bar-btn" id="okConfirmBtn">Confirm</button>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
     <script src="main.js"></script>
   </body>
 </html>
